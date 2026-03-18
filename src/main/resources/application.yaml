@@ -3,9 +3,9 @@ spring:
     name: academic-system
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/academic_system
-    username: postgres
-    password: postgres
+    url: ${URL_DATABASE_POSTGRESQL:jdbc:postgresql://localhost:5432/academic_system}
+    username: ${USERNAME_POSTGRESQL:postgres}
+    password: ${PASSWORD_POSTGRESQL:postgres}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -38,6 +38,13 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+  # === CONFIGURACIÓN REDIS ===
+  data:
+    redis:
+      host: redis
+      port: 6379
+      timeout: 60000
+
 server:
   port: 8080
 
@@ -57,3 +64,8 @@ security:
   rate-limit:
     login-attempts: 10
     recovery-attempts: 3
+
+# === CONFIGURACIÓN OTP ===
+otp:
+  expiration-minutes: 5
+  length: 6

@@ -128,4 +128,19 @@ public class EmailService {
             log.error("Error al enviar notificación de bloqueo: {}", e.getMessage());
         }
     }
+
+    public void sendEmail(String toEmail, String subject, String messageText) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject(subject);
+            message.setText(messageText);
+            
+            mailSender.send(message);
+            log.info("Email enviado a: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Error al enviar email: {}", e.getMessage());
+        }
+    }
 }

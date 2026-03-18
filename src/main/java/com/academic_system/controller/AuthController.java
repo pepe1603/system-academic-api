@@ -30,7 +30,7 @@ public class AuthController {
 
     @PostMapping("/verify-2fa")
     public ResponseEntity<ApiResponse<LoginResponse>> verifyTwoFactor(@Valid @RequestBody TwoFactorRequest request) {
-        LoginResponse response = authService.verifyTwoFactor(request);
+        LoginResponse response = authService.verifyOtp(request.getTempToken(), request.getCode());
         return ResponseEntity.ok(ApiResponse.success("Verificación exitosa", response));
     }
 
@@ -96,16 +96,14 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Usuario creado exitosamente. Debe cambiar su contraseña.", null));
     }
 
-    // === 2FA ENDPOINTS ===
+    // === 2FA ENDPOINTS con OTP propio ===
 
-    @PostMapping("/2fa/setup")
-    public ResponseEntity<ApiResponse<TwoFactorSetupResponse>> setupTwoFactor(
+    @PostMapping("/2fa/request-setup")
+    public ResponseEntity<ApiResponse<Void>> requestTwoFactorSetup(
             @AuthenticationPrincipal UserDetails userDetails) {
         
         UUID userId = ((com.academic_system.security.CustomUserDetails) userDetails).getUserId();
-        TwoFactorSetupResponse response = authService.setupTwoFactor(userId);
-        
-        return ResponseEntity.ok(ApiResponse.success("Escanee el código QR con su app", response));
+        return ResponseEntity.ok(authService.requestTwoFactorSetup(userId));
     }
 
     @PostMapping("/2fa/enable")

@@ -7,6 +7,7 @@ import com.academic_system.repository.PasswordRecoveryRepository;
 import com.academic_system.repository.UserRepository;
 import com.academic_system.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -24,13 +25,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordRecoveryRepository passwordRecoveryRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final TwoFactorService twoFactorService;
+    private final OtpService otpService;
     private final AuthenticationManager authenticationManager;
 
     @Value("${security.password.expiry-days:90}")
@@ -71,13 +73,14 @@ public class AuthService {
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        // Si tiene 2FA habilitado, devolver token parcial
+        // Si tiene 2FA habilitado, enviar código OTP por email
         if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
-            // Generar token temporal para completar 2FA
+            otpService.sendOtpByEmail(user.getEmail(), "LOGIN_2FA");
+            
             String tempToken = jwtService.generateToken(
-                    java.util.Map.of("userId", user.getId().toString(), "requires2fa", "true"),
+                    java.util.Map.of("userId", user.getId().toString(), "pending2fa", "true"),
                     userDetails,
-                    300000 // 5 minutos para completar 2FA
+                    300000
             );
 
             return LoginResponse.builder()
@@ -86,6 +89,7 @@ public class AuthService {
                     .email(user.getEmail())
                     .requiresTwoFactor(true)
                     .tempToken(tempToken)
+                    .message("Se ha enviado un código de verificación a su correo")
                     .build();
         }
 
@@ -94,38 +98,22 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse verifyTwoFactor(TwoFactorRequest request) {
-        String username = jwtService.extractUsername(request.getTempToken());
+    public LoginResponse verifyOtp(String tempToken, String otpCode) {
+        String username = jwtService.extractUsername(tempToken);
         
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("Usuario no encontrado"));
 
-        boolean isValid = false;
-
-        // Verificar código TOTP
-        if (request.getCode() != null && !request.getCode().isEmpty()) {
-            isValid = twoFactorService.verifyCode(user.getTwoFactorSecret(), request.getCode());
-        }
-        // Verificar código de respaldo
-        else if (request.getBackupCode() != null && !request.getBackupCode().isEmpty()) {
-            isValid = twoFactorService.verifyBackupCode(user.getTwoFactorBackupCodes(), request.getBackupCode());
-            
-            if (isValid) {
-                // Remover código de respaldo usado
-                String updatedCodes = twoFactorService.removeUsedBackupCode(
-                        user.getTwoFactorBackupCodes(), request.getBackupCode());
-                user.setTwoFactorBackupCodes(updatedCodes);
-            }
-        }
-
-        if (!isValid) {
+        if (!otpService.verifyOtp("LOGIN_2FA", user.getEmail(), otpCode)) {
             user.incrementFailedAttempts();
             userRepository.save(user);
-            throw new BadCredentialsException("Código inválido");
+            throw new BadCredentialsException("Código de verificación inválido o expirado");
         }
 
         return completeLogin(user);
     }
+
+
 
     private LoginResponse completeLogin(User user) {
         user.resetFailedAttempts();
@@ -241,26 +229,16 @@ public class AuthService {
         return ApiResponse.success("Contraseña restablecida exitosamente", null);
     }
 
-    // === 2FA ===
+    // === 2FA con OTP propio ===
 
     @Transactional
-    public TwoFactorSetupResponse setupTwoFactor(UUID userId) {
+    public ApiResponse<Void> requestTwoFactorSetup(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
-        String secret = twoFactorService.generateSecret();
-        String backupCodes = twoFactorService.generateBackupCodes();
-
-        user.setTwoFactorSecret(secret);
-        user.setTwoFactorBackupCodes(backupCodes);
-        user.setTwoFactorEnabled(false); // No habilitar hasta verificar
-        userRepository.save(user);
-
-        return TwoFactorSetupResponse.builder()
-                .secret(secret)
-                .backupCodes(backupCodes.split(","))
-                .qrCodeUrl("otpauth://totp/AcademicSystem:" + user.getUsername() + "?secret=" + secret + "&issuer=AcademicSystem")
-                .build();
+        otpService.sendOtpByEmail(user.getEmail(), "LOGIN_2FA");
+        
+        return ApiResponse.success("Se ha enviado un código de verificación a su correo electrónico", null);
     }
 
     @Transactional
@@ -268,14 +246,14 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
-        if (!twoFactorService.verifyCode(user.getTwoFactorSecret(), code)) {
-            return ApiResponse.error("Código inválido");
+        if (!otpService.verifyOtp("LOGIN_2FA", user.getEmail(), code)) {
+            return ApiResponse.error("Código de verificación inválido o expirado");
         }
 
         user.setTwoFactorEnabled(true);
         userRepository.save(user);
 
-        return ApiResponse.success("Autenticación de dos factores habilitada", null);
+        return ApiResponse.success("Autenticación de dos factores habilitada correctamente", null);
     }
 
     @Transactional
@@ -288,8 +266,6 @@ public class AuthService {
         }
 
         user.setTwoFactorEnabled(false);
-        user.setTwoFactorSecret(null);
-        user.setTwoFactorBackupCodes(null);
         userRepository.save(user);
 
         return ApiResponse.success("Autenticación de dos factores deshabilitada", null);

@@ -10,17 +10,27 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=default
+      - SPRING_DATASOURCE_URL=${URL_DATABASE_POSTGRESQL}
+      - SPRING_DATASOURCE_USERNAME=${USERNAME_POSTGRESQL}
+      - SPRING_DATASOURCE_PASSWORD=${PASSWORD_POSTGRESQL}
+      - SPRING_MAIL_USERNAME=${MAIL_USERNAME}
+      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - ./logs:/app/logs
+    depends_on:
+      - redis
     restart: unless-stopped
 
-  # Redis (optional - descomenta si lo necesitas)
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
+  # Redis para rate limiting y caché
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
 
-# volumes:
-#   redis_data:
+volumes:
+  redis_data:

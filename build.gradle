@@ -41,8 +41,7 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 	
-	// TOTP - Google Authenticator
-	implementation 'dev.samstevens.totp:totp:1.7.1'
+	// OTP Propio (no requiere Google Authenticator)
 	
 	// Validation
 	implementation 'org.mindrot:jbcrypt:0.4'
