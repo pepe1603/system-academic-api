@@ -3,11 +3,11 @@ package com.academic_system.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
-import java.time.Instant;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -15,7 +15,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class OtpService {
 
     private final EmailService emailService;
+    private final StringRedisTemplate redisTemplate;
     private final SecureRandom random = new SecureRandom();
+
+    private static final String OTP_KEY_PREFIX = "otp:";
 
     @Value("${otp.expiration-minutes:5}")
     private int expirationMinutes;
@@ -23,13 +26,11 @@ public class OtpService {
     @Value("${otp.length:6}")
     private int otpLength;
 
-    private final ConcurrentHashMap<String, OtpEntry> otpStore = new ConcurrentHashMap<>();
-
     public String generateOtp(String purpose, String identifier) {
         String otp = generateRandomOtp();
         String key = buildKey(purpose, identifier);
 
-        otpStore.put(key, new OtpEntry(otp, Instant.now().plusSeconds(expirationMinutes * 60L)));
+        redisTemplate.opsForValue().set(key, otp, expirationMinutes, TimeUnit.MINUTES);
 
         log.debug("OTP generado para {}: {}", purpose, identifier);
         return otp;
@@ -45,7 +46,7 @@ public class OtpService {
                 subject = "Código de verificación - Inicio de sesión";
                 message = String.format(
                     "Su código de verificación para iniciar sesión es: %s\n\n" +
-                    "Este código expire en %d minutos.\n\n" +
+                    "Este código expira en %d minutos.\n\n" +
                     "Si no solicitó este código, ignore este mensaje.",
                     otp, expirationMinutes
                 );
@@ -54,7 +55,7 @@ public class OtpService {
                 subject = "Código de recuperación de contraseña";
                 message = String.format(
                     "Su código de recuperación de contraseña es: %s\n\n" +
-                    "Este código expire en %d minutos.\n\n" +
+                    "Este código expira en %d minutos.\n\n" +
                     "Si no solicitó este código, ignore este mensaje.",
                     otp, expirationMinutes
                 );
@@ -63,7 +64,7 @@ public class OtpService {
                 subject = "Verificación de correo electrónico";
                 message = String.format(
                     "Su código de verificación es: %s\n\n" +
-                    "Este código expire en %d minutos.",
+                    "Este código expira en %d minutos.",
                     otp, expirationMinutes
                 );
                 break;
@@ -77,21 +78,15 @@ public class OtpService {
 
     public boolean verifyOtp(String purpose, String identifier, String otp) {
         String key = buildKey(purpose, identifier);
-        OtpEntry entry = otpStore.get(key);
+        String storedOtp = redisTemplate.opsForValue().get(key);
 
-        if (entry == null) {
+        if (storedOtp == null) {
             log.warn("OTP no encontrado para {}: {}", purpose, identifier);
             return false;
         }
 
-        if (Instant.now().isAfter(entry.expiresAt)) {
-            otpStore.remove(key);
-            log.warn("OTP expirado para {}: {}", purpose, identifier);
-            return false;
-        }
-
-        if (entry.otp.equals(otp)) {
-            otpStore.remove(key);
+        if (storedOtp.equals(otp)) {
+            redisTemplate.delete(key);
             log.info("OTP verificado correctamente para {}: {}", purpose, identifier);
             return true;
         }
@@ -102,23 +97,12 @@ public class OtpService {
 
     public void invalidateOtp(String purpose, String identifier) {
         String key = buildKey(purpose, identifier);
-        otpStore.remove(key);
+        redisTemplate.delete(key);
     }
 
     public boolean hasPendingOtp(String purpose, String identifier) {
         String key = buildKey(purpose, identifier);
-        OtpEntry entry = otpStore.get(key);
-        
-        if (entry == null) {
-            return false;
-        }
-
-        if (Instant.now().isAfter(entry.expiresAt)) {
-            otpStore.remove(key);
-            return false;
-        }
-
-        return true;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
     }
 
     private String generateRandomOtp() {
@@ -130,16 +114,6 @@ public class OtpService {
     }
 
     private String buildKey(String purpose, String identifier) {
-        return purpose + ":" + identifier;
-    }
-
-    private static class OtpEntry {
-        String otp;
-        Instant expiresAt;
-
-        OtpEntry(String otp, Instant expiresAt) {
-            this.otp = otp;
-            this.expiresAt = expiresAt;
-        }
+        return OTP_KEY_PREFIX + purpose + ":" + identifier;
     }
 }

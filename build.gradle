@@ -32,9 +32,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	
-	// Rate Limiting
-	implementation 'io.github.bucket4j:bucket4j-core:8.10.1'
-	implementation 'io.github.bucket4j:bucket4j-redis:8.10.1'
+	// Rate Limiting (usando Redis)
 	
 	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'

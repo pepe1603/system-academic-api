@@ -1,6 +1,6 @@
 package com.academic_system.security;
 
-import io.github.bucket4j.Bucket;
+import com.academic_system.service.RateLimitingService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -8,13 +8,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.function.Supplier;
 
 @Component
 @RequiredArgsConstructor
 public class RateLimitingFilter implements Filter {
 
-    private final Supplier<Bucket> defaultBucketSupplier;
+    private final RateLimitingService rateLimitingService;
+
+    private static final int MAX_REQUESTS_PER_MINUTE = 100;
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -25,23 +26,31 @@ public class RateLimitingFilter implements Filter {
 
         String path = httpRequest.getRequestURI();
 
-        // Solo aplicar rate limiting a APIs
         if (path.startsWith("/api/")) {
-            Bucket bucket = defaultBucketSupplier.get();
+            String clientIp = getClientIp(httpRequest);
+            String key = "api:" + clientIp;
 
-            if (bucket.tryConsume(1)) {
-                // Agregar headers de rate limiting
-                httpResponse.setHeader("X-Rate-Limit-Remaining", String.valueOf(bucket.getAvailableTokens()));
+            if (rateLimitingService.isAllowed(key, MAX_REQUESTS_PER_MINUTE, 1)) {
+                int remaining = rateLimitingService.getRemainingAttempts(key, MAX_REQUESTS_PER_MINUTE);
+                httpResponse.setHeader("X-Rate-Limit-Remaining", String.valueOf(remaining));
                 chain.doFilter(request, response);
             } else {
                 httpResponse.setStatus(429);
                 httpResponse.setContentType("application/json");
                 httpResponse.getWriter().write(
-                    "{\"error\": \"Too many requests. Please try again later.\", \"code\": \"RATE_LIMIT_EXCEEDED\"}"
+                    "{\"error\": \"Demasiadas solicitudes. Intente más tarde.\", \"code\": \"RATE_LIMIT_EXCEEDED\"}"
                 );
             }
         } else {
             chain.doFilter(request, response);
         }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }
