@@ -1,5 +1,6 @@
 package com.academic_system.security;
 
+import com.academic_system.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
