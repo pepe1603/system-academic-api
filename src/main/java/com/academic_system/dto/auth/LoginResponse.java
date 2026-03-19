@@ -26,4 +26,5 @@ public class LoginResponse {
     // 2FA
     private Boolean requiresTwoFactor;
     private String tempToken;
+    private String message;
 }

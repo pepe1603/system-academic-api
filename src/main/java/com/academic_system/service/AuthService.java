@@ -3,6 +3,7 @@ package com.academic_system.service;
 import com.academic_system.dto.auth.*;
 import com.academic_system.entity.PasswordRecovery;
 import com.academic_system.entity.User;
+import com.academic_system.exception.PasswordChangeRequiredException;
 import com.academic_system.repository.PasswordRecoveryRepository;
 import com.academic_system.repository.UserRepository;
 import com.academic_system.security.CustomUserDetails;
