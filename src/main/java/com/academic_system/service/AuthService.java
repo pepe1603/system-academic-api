@@ -3,9 +3,11 @@ package com.academic_system.service;
 import com.academic_system.dto.auth.*;
 import com.academic_system.entity.PasswordRecovery;
 import com.academic_system.entity.User;
+import com.academic_system.entity.UserSession;
 import com.academic_system.exception.PasswordChangeRequiredException;
 import com.academic_system.repository.PasswordRecoveryRepository;
 import com.academic_system.repository.UserRepository;
+import com.academic_system.repository.UserSessionRepository;
 import com.academic_system.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,10 +33,12 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordRecoveryRepository passwordRecoveryRepository;
+    private final UserSessionRepository userSessionRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final OtpService otpService;
     private final AuthenticationManager authenticationManager;
+    private final EmailService emailService;
 
     @Value("${security.password.expiry-days:90}")
     private int passwordExpiryDays;
@@ -126,6 +130,14 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(userDetails);
         String refreshToken = jwtService.generateRefreshToken(userDetails);
 
+        UserSession session = UserSession.builder()
+                .user(user)
+                .jwtToken(accessToken)
+                .refreshToken(refreshToken)
+                .expiresAt(LocalDateTime.now().plusSeconds(jwtService.getAccessTokenExpiration() / 1000))
+                .build();
+        userSessionRepository.save(session);
+
         return LoginResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
@@ -146,24 +158,64 @@ public class AuthService {
     @Transactional
     public ApiResponse<String> refreshToken(RefreshTokenRequest request) {
         String refreshToken = request.getRefreshToken();
-        String username = jwtService.extractUsername(refreshToken);
 
-        CustomUserDetails userDetails = (CustomUserDetails) 
-                SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        if (!jwtService.isTokenValid(refreshToken, userDetails)) {
-            return ApiResponse.error("Refresh token inválido");
+        String username;
+        try {
+            username = jwtService.extractUsername(refreshToken);
+        } catch (Exception e) {
+            log.error("Refresh token inválido: {}", e.getMessage());
+            throw new BadCredentialsException("Refresh token inválido o expirado");
         }
 
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadCredentialsException("Usuario no encontrado"));
+
+        if (!jwtService.isRefreshTokenValid(refreshToken, user)) {
+            throw new BadCredentialsException("Refresh token inválido o expirado");
+        }
+
+        UserSession session = userSessionRepository.findByJwtTokenAndIsActiveTrue(refreshToken)
+                .orElseGet(() -> userSessionRepository.findByRefreshTokenAndIsActiveTrue(refreshToken)
+                        .orElse(null));
+
+        if (session == null || !session.getIsActive()) {
+            throw new BadCredentialsException("Sesión invalidada. Por favor, inicie sesión nuevamente.");
+        }
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
         String newAccessToken = jwtService.generateAccessToken(userDetails);
 
         return ApiResponse.success("Token refrescado", newAccessToken);
     }
 
     @Transactional
-    public ApiResponse<Void> logout() {
+    public ApiResponse<Void> logout(String authorizationHeader) {
+        String token = extractTokenFromHeader(authorizationHeader);
+        
+        String username;
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (Exception e) {
+            log.error("Token inválido en logout: {}", e.getMessage());
+            return ApiResponse.error("Token inválido o corrupto");
+        }
+        
+        User user = userRepository.findByUsername(username)
+                .orElse(null);
+        
+        if (user != null) {
+            userSessionRepository.invalidateAllSessionsForUser(user.getId());
+        }
+        
         SecurityContextHolder.clearContext();
         return ApiResponse.success("Sesión cerrada exitosamente", null);
+    }
+    
+    private String extractTokenFromHeader(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new BadCredentialsException("Token no proporcionado");
+        }
+        return authorizationHeader.substring(7);
     }
 
     // === RECUPERACIÓN DE CONTRASEÑA ===
@@ -186,7 +238,7 @@ public class AuthService {
                     passwordRecoveryRepository.save(recovery);
 
                     // TODO: Enviar email con el token
-                    // emailService.sendPasswordRecoveryEmail(user.getEmail(), token);
+                    emailService.sendPasswordRecoveryEmail(user.getEmail(), token);
                 });
 
         return ApiResponse.success("Si el email existe, se enviará un enlace de recuperación", null);

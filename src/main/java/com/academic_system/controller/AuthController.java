@@ -40,8 +40,15 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
-        return ResponseEntity.ok(authService.logout());
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401)
+                    .body(ApiResponse.error("Token no proporcionado o formato inválido"));
+        }
+        
+        return ResponseEntity.ok(authService.logout(authorizationHeader));
     }
 
     @PostMapping("/recovery")

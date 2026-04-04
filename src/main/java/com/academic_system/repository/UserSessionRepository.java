@@ -18,6 +18,8 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
 
     Optional<UserSession> findByJwtTokenAndIsActiveTrue(String jwtToken);
 
+    Optional<UserSession> findByRefreshTokenAndIsActiveTrue(String refreshToken);
+
     Optional<UserSession> findByJwtToken(String jwtToken);
 
     @Modifying

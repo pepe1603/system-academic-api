@@ -28,6 +28,9 @@ public class UserSession {
     @Column(name = "jwt_token", nullable = false, columnDefinition = "TEXT")
     private String jwtToken;
 
+    @Column(name = "refresh_token", columnDefinition = "TEXT")
+    private String refreshToken;
+
     @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
