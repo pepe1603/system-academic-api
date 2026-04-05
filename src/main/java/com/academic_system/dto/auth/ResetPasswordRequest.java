@@ -13,7 +13,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ResetPasswordRequest {
 
-    @NotBlank(message = "El token es requerido")
+    @NotBlank(message = "El email es requerido")
+    private String email;
+
+    @NotBlank(message = "El código es requerido")
     private String token;
 
     @NotBlank(message = "La nueva contraseña es requerida")

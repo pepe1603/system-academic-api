@@ -221,61 +221,30 @@ public class AuthService {
 
     // === RECUPERACIÓN DE CONTRASEÑA ===
 
-    @Transactional
     public ApiResponse<Void> requestPasswordRecovery(PasswordRecoveryRequest request) {
         userRepository.findByEmail(request.getEmail())
                 .ifPresent(user -> {
-                    String token = generateOTP();
-                    
-                    passwordRecoveryRepository.markAllTokensAsUsedForUser(user.getId());
-
-                    PasswordRecovery recovery = PasswordRecovery.builder()
-                            .user(user)
-                            .recoveryToken(token)
-                            .expiresAt(LocalDateTime.now().plusHours(24))
-                            .isUsed(false)
-                            .build();
-
-                    passwordRecoveryRepository.save(recovery);
-
-                    // TODO: Enviar email con el token
-                    emailService.sendPasswordRecoveryEmail(user.getEmail(), token);
+                    otpService.sendOtpByEmail(user.getEmail(), "PASSWORD_RECOVERY");
                 });
 
-        return ApiResponse.success("Si el email existe, se enviará un enlace de recuperación", null);
+        return ApiResponse.success("Si el email existe, se enviará un código de recuperación", null);
     }
 
-    private String generateOTP() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        Random random = new Random();
-        StringBuilder code = new StringBuilder(6);
-        for (int i = 0; i < 6; i++) {
-            code.append(chars.charAt(random.nextInt(chars.length())));
-        }
-        return code.toString();
-    }
-
-    @Transactional
     public ApiResponse<Void> resetPassword(ResetPasswordRequest request) {
-        PasswordRecovery recovery = passwordRecoveryRepository
-                .findByRecoveryToken(request.getToken())
+        String email = request.getEmail();
+        String code = request.getToken();
+
+        if (!otpService.verifyOtp("PASSWORD_RECOVERY", email, code)) {
+            return ApiResponse.error("Código inválido o expirado");
+        }
+
+        User user = userRepository.findByEmail(email)
                 .orElse(null);
 
-        if (recovery == null) {
-            return ApiResponse.error("Token inválido");
+        if (user == null) {
+            return ApiResponse.error("Usuario no encontrado");
         }
 
-        if (recovery.getIsUsed()) {
-            return ApiResponse.error("Token ya utilizado");
-        }
-
-        if (recovery.isExpired()) {
-            return ApiResponse.error("Token expirado");
-        }
-
-        User user = recovery.getUser();
-        
-        // Validar que la nueva contraseña sea diferente
         if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
             return ApiResponse.error("La nueva contraseña debe ser diferente a la anterior");
         }
@@ -284,11 +253,6 @@ public class AuthService {
         user.setPasswordChangedAt(LocalDateTime.now());
         user.setMustChangePassword(false);
         userRepository.save(user);
-
-        recovery.setIsUsed(true);
-        passwordRecoveryRepository.save(recovery);
-
-        passwordRecoveryRepository.markAllTokensAsUsedForUser(user.getId());
 
         return ApiResponse.success("Contraseña restablecida exitosamente", null);
     }
