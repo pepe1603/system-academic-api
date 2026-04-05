@@ -18,7 +18,8 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 | POST | `/verify-2fa` | Verificar código 2FA | No |
 | POST | `/refresh` | Renovar token | No |
 | POST | `/logout` | Cerrar sesión | Sí |
-| POST | `/recovery` | Solicitar recuperación de contraseña | No |
+| POST | `/recovery` | Solicitar código OTP de recuperación | No |
+| POST | `/verify-otp` | Verificar código OTP | No |
 | POST | `/reset-password` | Restablecer contraseña | No |
 | POST | `/change-password` | Cambiar contraseña | Sí |
 | POST | `/register` | Registro de usuario | No |
@@ -163,11 +164,13 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 5. Solicitar Recuperación de Contraseña
+## 5. Recuperación de Contraseña (Flujo de 3 Pasos)
 
-### POST `/api/auth/recovery`
+### Paso 1: Solicitar Código OTP
 
-**Descripción**: Envía un email con link para restablecer contraseña.
+#### POST `/api/auth/recovery`
+
+**Descripción**: Envía un código OTP de 6 dígitos al email del usuario.
 
 **Request Body**:
 ```json
@@ -180,23 +183,68 @@ Authorization: Bearer {{accessToken}}
 ```json
 {
     "success": true,
-    "message": "Si el email existe, se envió un enlace de recuperación",
+    "message": "Si el email existe, se enviará un código de recuperación",
     "data": null
 }
 ```
 
 ---
 
-## 6. Restablecer Contraseña
+### Paso 2: Verificar Código OTP
 
-### POST `/api/auth/reset-password`
+#### POST `/api/auth/verify-otp`
 
-**Descripción**: Restablece la contraseña usando el token del email.
+**Descripción**: Verifica el código OTP recibido. Si es válido, permite continuar al siguiente paso.
 
 **Request Body**:
 ```json
 {
-    "token": "token_recibido_en_email",
+    "email": "usuario@example.com",
+    "code": "123456",
+    "purpose": "PASSWORD_RECOVERY"
+}
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "success": true,
+    "message": "Código verificado correctamente",
+    "data": null
+}
+```
+
+**Error - Código Inválido (400)**:
+```json
+{
+    "success": false,
+    "message": "Código inválido. Intentos restantes: 5",
+    "data": null
+}
+```
+
+**Error - Cuenta Bloqueada (429)**:
+```json
+{
+    "success": false,
+    "message": "Cuenta bloqueada por demasiados intentos fallidos. Intenta en 15 minutos",
+    "data": null
+}
+```
+
+---
+
+### Paso 3: Restablecer Contraseña
+
+#### POST `/api/auth/reset-password`
+
+**Descripción**: Restablece la contraseña después de verificar el código OTP.
+
+**Request Body**:
+```json
+{
+    "email": "usuario@example.com",
+    "token": "123456",
     "newPassword": "nuevaContraseña123"
 }
 ```
@@ -205,14 +253,20 @@ Authorization: Bearer {{accessToken}}
 ```json
 {
     "success": true,
-    "message": "Contraseña actualizada exitosamente",
+    "message": "Contraseña restablecida exitosamente",
     "data": null
 }
 ```
 
+**Notas**:
+- El código OTP expira en 5 minutos (configurable).
+- Máximo 6 intentos fallidos antes de bloquear por 15 minutos.
+- Al solicitar un nuevo código, el anterior se invalida y los intentos se reinician.
+- El bloqueo es automático y se libera después del tiempo configurado.
+
 ---
 
-## 7. Cambiar Contraseña (Usuario Logueado)
+## 8. Cambiar Contraseña (Usuario Logueado)
 
 ### POST `/api/auth/change-password`
 
@@ -252,7 +306,7 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 8. Registro de Usuario
+## 9. Registro de Usuario
 
 ### POST `/api/auth/register`
 
@@ -297,7 +351,7 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 9. Registro por Administrador
+## 10. Registro por Administrador
 
 ### POST `/api/auth/admin/register`
 
@@ -333,7 +387,7 @@ POST {{baseUrl}}/admin/register?username=adminuser&email=admin@edu.com&temporary
 
 ---
 
-## 10. Solicitar Setup de 2FA
+## 11. Solicitar Setup de 2FA
 
 ### POST `/api/auth/2fa/request-setup`
 
@@ -359,7 +413,7 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 11. Habilitar 2FA
+## 12. Habilitar 2FA
 
 ### POST `/api/auth/2fa/enable`
 
@@ -391,7 +445,7 @@ POST {{baseUrl}}/2fa/enable?code=123456
 
 ---
 
-## 12. Deshabilitar 2FA
+## 13. Deshabilitar 2FA
 
 ### POST `/api/auth/2fa/disable`
 
@@ -493,10 +547,16 @@ if (pm.response.code === 200 && pm.response.json().data.accessToken) {
 4. **POST** `/2fa/enable?code=XXXXXX` → Habilitar 2FA
 5. **POST** `/logout`
 
-### Flujo 3: Recuperación de Contraseña
+### Flujo 3: Recuperación de Contraseña (3 Pasos)
 
-1. **POST** `/recovery` → Solicitar recuperación (ver email)
-2. **POST** `/reset-password` → Restablecer con token
+1. **POST** `/recovery` → Solicitar código OTP
+2. **POST** `/verify-otp` → Verificar código OTP
+3. **POST** `/reset-password` → Establecer nueva contraseña
+
+**Notas del flujo**:
+- Código OTP: 6 dígitos, expira en 5 minutos
+- Máximo 6 intentos fallidos → bloqueo por 15 minutos
+- Cada solicitud de código nuevo invalida el anterior y reinicia los intentos
 
 ### Flujo 4: Registro y Cambio de Contraseña
 

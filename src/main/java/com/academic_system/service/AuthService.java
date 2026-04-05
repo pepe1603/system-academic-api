@@ -234,8 +234,13 @@ public class AuthService {
         String email = request.getEmail();
         String code = request.getToken();
 
-        if (!otpService.verifyOtp("PASSWORD_RECOVERY", email, code)) {
-            return ApiResponse.error("Código inválido o expirado");
+        OtpService.OtpVerifyResult result = otpService.verifyOtp("PASSWORD_RECOVERY", email, code);
+        
+        if (!result.isSuccess()) {
+            if (result.isLocked()) {
+                return ApiResponse.error(result.getErrorMessage() + ". Intenta en " + result.getRemainingMinutes() + " minutos");
+            }
+            return ApiResponse.error(result.getErrorMessage());
         }
 
         User user = userRepository.findByEmail(email)

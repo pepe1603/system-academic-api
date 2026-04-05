@@ -3,6 +3,7 @@ package com.academic_system.controller;
 import com.academic_system.dto.auth.*;
 import com.academic_system.entity.User;
 import com.academic_system.service.AuthService;
+import com.academic_system.service.OtpService;
 import com.academic_system.service.UserRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class AuthController {
 
     private final AuthService authService;
+    private final OtpService otpService;
     private final UserRegistrationService userRegistrationService;
 
     @PostMapping("/login")
@@ -59,6 +61,22 @@ public class AuthController {
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return ResponseEntity.ok(authService.resetPassword(request));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        String purpose = request.getPurpose() != null ? request.getPurpose() : "PASSWORD_RECOVERY";
+        OtpService.OtpVerifyResult result = otpService.verifyOtp(purpose, request.getEmail(), request.getCode());
+
+        if (result.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.success("Código verificado correctamente", null));
+        } else if (result.isLocked()) {
+            return ResponseEntity.status(429)
+                    .body(ApiResponse.error(result.getErrorMessage() + ". Intenta en " + result.getRemainingMinutes() + " minutos"));
+        } else {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(result.getErrorMessage()));
+        }
     }
 
     @PostMapping("/change-password")
