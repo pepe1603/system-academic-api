@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -224,7 +225,7 @@ public class AuthService {
     public ApiResponse<Void> requestPasswordRecovery(PasswordRecoveryRequest request) {
         userRepository.findByEmail(request.getEmail())
                 .ifPresent(user -> {
-                    String token = UUID.randomUUID().toString();
+                    String token = generateOTP();
                     
                     passwordRecoveryRepository.markAllTokensAsUsedForUser(user.getId());
 
@@ -242,6 +243,16 @@ public class AuthService {
                 });
 
         return ApiResponse.success("Si el email existe, se enviará un enlace de recuperación", null);
+    }
+
+    private String generateOTP() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        Random random = new Random();
+        StringBuilder code = new StringBuilder(6);
+        for (int i = 0; i < 6; i++) {
+            code.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return code.toString();
     }
 
     @Transactional
