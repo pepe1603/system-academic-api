@@ -110,7 +110,7 @@ public class AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("Usuario no encontrado"));
 
-        if (!otpService.verifyOtp("LOGIN_2FA", user.getEmail(), otpCode)) {
+        if (!otpService.verifyOtp("LOGIN_2FA", user.getEmail(), otpCode).isSuccess()) {
             user.incrementFailedAttempts();
             userRepository.save(user);
             throw new BadCredentialsException("Código de verificación inválido o expirado");
@@ -279,7 +279,7 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
-        if (!otpService.verifyOtp("LOGIN_2FA", user.getEmail(), code)) {
+        if (!otpService.verifyOtp("LOGIN_2FA", user.getEmail(), code).isSuccess()) {
             return ApiResponse.error("Código de verificación inválido o expirado");
         }
 
