@@ -31,7 +31,7 @@ public class HealthController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/auth/health")
+    @GetMapping("/monitor")
     public ResponseEntity<Map<String, Object>> healthWithDetails() {
         Map<String, Object> response = new HashMap<>();
         Map<String, String> services = new HashMap<>();

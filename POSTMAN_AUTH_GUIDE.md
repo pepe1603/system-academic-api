@@ -15,7 +15,7 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 | Método | Endpoint | Descripción | Auth Requerida |
 |--------|----------|-------------|----------------|
 | GET | `/health` | Verificar estado del servidor (simple) | No |
-| GET | `/auth/health` | Verificar estado con detalles de servicios | Sí |
+| GET | `/monitor` | Verificar estado con detalles de servicios | Sí |
 | POST | `/login` | Inicio de sesión | No |
 | POST | `/verify-2fa` | Verificar código 2FA | No |
 | POST | `/refresh` | Renovar token | No |
@@ -50,7 +50,7 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 
 ---
 
-### GET `/api/auth/health` (Con Auth)
+### GET `/api/monitor` (Con Auth)
 
 **Descripción**: Verifica el estado del servidor y sus servicios (DB, Redis). Requiere autenticación.
 
