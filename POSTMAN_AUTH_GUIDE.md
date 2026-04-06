@@ -14,7 +14,8 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 
 | Método | Endpoint | Descripción | Auth Requerida |
 |--------|----------|-------------|----------------|
-| GET | `/health` | Verificar estado del servidor | No |
+| GET | `/health` | Verificar estado del servidor (simple) | No |
+| GET | `/auth/health` | Verificar estado con detalles de servicios | Sí |
 | POST | `/login` | Inicio de sesión | No |
 | POST | `/verify-2fa` | Verificar código 2FA | No |
 | POST | `/refresh` | Renovar token | No |
@@ -33,9 +34,9 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 
 ## 1. Verificar Estado del Servidor
 
-### GET `/api/auth/health`
+### GET `/api/health` (Sin Auth)
 
-**Descripción**: Verifica que el servidor esté funcionando correctamente.
+**Descripción**: Verifica que el servidor esté funcionando. Endpoint público sin autenticación.
 
 **Request**: No requiere body ni headers.
 
@@ -47,7 +48,40 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 }
 ```
 
-**Nota**: Este endpoint aún no está implementado en el backend. Se actualizará cuando el usuario proporcione los detalles.
+---
+
+### GET `/api/auth/health` (Con Auth)
+
+**Descripción**: Verifica el estado del servidor y sus servicios (DB, Redis). Requiere autenticación.
+
+**Headers Requeridos**:
+```
+Authorization: Bearer {{accessToken}}
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "status": "UP",
+    "timestamp": "2026-04-05T14:30:00Z",
+    "services": {
+        "database": "UP",
+        "redis": "UP"
+    }
+}
+```
+
+**Respuesta Degradada (503)** - Cuando algún servicio está caído:
+```json
+{
+    "status": "DEGRADED",
+    "timestamp": "2026-04-05T14:30:00Z",
+    "services": {
+        "database": "UP",
+        "redis": "DOWN"
+    }
+}
+```
 
 ---
 
