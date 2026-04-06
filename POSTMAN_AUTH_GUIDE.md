@@ -14,6 +14,7 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 
 | Método | Endpoint | Descripción | Auth Requerida |
 |--------|----------|-------------|----------------|
+| GET | `/health` | Verificar estado del servidor | No |
 | POST | `/login` | Inicio de sesión | No |
 | POST | `/verify-2fa` | Verificar código 2FA | No |
 | POST | `/refresh` | Renovar token | No |
@@ -30,7 +31,27 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 
 ---
 
-## 1. Login
+## 1. Verificar Estado del Servidor
+
+### GET `/api/auth/health`
+
+**Descripción**: Verifica que el servidor esté funcionando correctamente.
+
+**Request**: No requiere body ni headers.
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "status": "UP",
+    "timestamp": "2026-04-05T14:30:00Z"
+}
+```
+
+**Nota**: Este endpoint aún no está implementado en el backend. Se actualizará cuando el usuario proporcione los detalles.
+
+---
+
+## 2. Login
 
 ### POST `/api/auth/login`
 
@@ -85,7 +106,7 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 
 ---
 
-## 2. Verificar 2FA
+## 3. Verificar 2FA
 
 ### POST `/api/auth/verify-2fa`
 
@@ -118,7 +139,7 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 
 ---
 
-## 3. Refrescar Token
+## 4. Refrescar Token
 
 ### POST `/api/auth/refresh`
 
@@ -142,7 +163,7 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 
 ---
 
-## 4. Logout
+## 5. Logout
 
 ### POST `/api/auth/logout`
 
@@ -164,7 +185,7 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 5. Recuperación de Contraseña (Flujo de 3 Pasos)
+## 6. Recuperación de Contraseña (Flujo de 3 Pasos)
 
 ### Paso 1: Solicitar Código OTP
 
@@ -266,7 +287,7 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 8. Cambiar Contraseña (Usuario Logueado)
+## 9. Cambiar Contraseña (Usuario Logueado)
 
 ### POST `/api/auth/change-password`
 
@@ -306,7 +327,7 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 9. Registro de Usuario
+## 10. Registro de Usuario
 
 ### POST `/api/auth/register`
 
@@ -351,7 +372,7 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 10. Registro por Administrador
+## 11. Registro por Administrador
 
 ### POST `/api/auth/admin/register`
 
@@ -387,7 +408,7 @@ POST {{baseUrl}}/admin/register?username=adminuser&email=admin@edu.com&temporary
 
 ---
 
-## 11. Solicitar Setup de 2FA
+## 12. Solicitar Setup de 2FA
 
 ### POST `/api/auth/2fa/request-setup`
 
@@ -413,7 +434,7 @@ Authorization: Bearer {{accessToken}}
 
 ---
 
-## 12. Habilitar 2FA
+## 13. Habilitar 2FA
 
 ### POST `/api/auth/2fa/enable`
 
@@ -445,7 +466,7 @@ POST {{baseUrl}}/2fa/enable?code=123456
 
 ---
 
-## 13. Deshabilitar 2FA
+## 14. Deshabilitar 2FA
 
 ### POST `/api/auth/2fa/disable`
 
