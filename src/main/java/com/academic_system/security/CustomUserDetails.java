@@ -1,6 +1,6 @@
 package com.academic_system.security;
 
-import com.academic_system.entity.User;
+import com.academic_system.entity.postgres.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;

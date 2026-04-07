@@ -1,6 +1,6 @@
 package com.academic_system.service;
 
-import com.academic_system.entity.User;
+import com.academic_system.entity.postgres.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;

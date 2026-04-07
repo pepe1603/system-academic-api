@@ -1,7 +1,8 @@
 package com.academic_system.security;
 
-import com.academic_system.entity.User;
-import com.academic_system.repository.UserRepository;
+
+import com.academic_system.entity.postgres.User;
+import com.academic_system.repository.postgres.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

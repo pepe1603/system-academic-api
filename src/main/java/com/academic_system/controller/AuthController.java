@@ -1,7 +1,6 @@
 package com.academic_system.controller;
 
 import com.academic_system.dto.auth.*;
-import com.academic_system.entity.User;
 import com.academic_system.service.AuthService;
 import com.academic_system.service.OtpService;
 import com.academic_system.service.UserRegistrationService;

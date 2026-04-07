@@ -1,14 +1,15 @@
 package com.academic_system.service;
 
 import com.academic_system.dto.auth.RegisterRequest;
-import com.academic_system.entity.Role;
-import com.academic_system.entity.Student;
-import com.academic_system.entity.Teacher;
-import com.academic_system.entity.User;
-import com.academic_system.repository.RoleRepository;
-import com.academic_system.repository.StudentRepository;
-import com.academic_system.repository.TeacherRepository;
-import com.academic_system.repository.UserRepository;
+
+import com.academic_system.entity.postgres.Role;
+import com.academic_system.entity.postgres.Student;
+import com.academic_system.entity.postgres.Teacher;
+import com.academic_system.entity.postgres.User;
+import com.academic_system.repository.postgres.RoleRepository;
+import com.academic_system.repository.postgres.StudentRepository;
+import com.academic_system.repository.postgres.TeacherRepository;
+import com.academic_system.repository.postgres.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

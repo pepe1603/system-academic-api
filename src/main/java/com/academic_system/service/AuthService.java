@@ -1,13 +1,13 @@
 package com.academic_system.service;
 
 import com.academic_system.dto.auth.*;
-import com.academic_system.entity.PasswordRecovery;
-import com.academic_system.entity.User;
-import com.academic_system.entity.UserSession;
+
+import com.academic_system.entity.postgres.User;
+import com.academic_system.entity.postgres.UserSession;
 import com.academic_system.exception.PasswordChangeRequiredException;
-import com.academic_system.repository.PasswordRecoveryRepository;
-import com.academic_system.repository.UserRepository;
-import com.academic_system.repository.UserSessionRepository;
+import com.academic_system.repository.postgres.PasswordRecoveryRepository;
+import com.academic_system.repository.postgres.UserRepository;
+import com.academic_system.repository.postgres.UserSessionRepository;
 import com.academic_system.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
