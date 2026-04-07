@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS institution (
     mission TEXT,
     vision TEXT,
     history TEXT,
-    values TEXT,
+    `values` TEXT,
     logo_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

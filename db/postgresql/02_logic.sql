@@ -98,16 +98,6 @@ CREATE TRIGGER trg_update_system_configuration
 BEFORE UPDATE ON system_configuration
 FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
-DROP TRIGGER IF EXISTS trg_update_portal_advertisement ON portal_advertisement;
-CREATE TRIGGER trg_update_portal_advertisement
-BEFORE UPDATE ON portal_advertisement
-FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
-
-DROP TRIGGER IF EXISTS trg_update_educational_resource ON educational_resource;
-CREATE TRIGGER trg_update_educational_resource
-BEFORE UPDATE ON educational_resource
-FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
-
 -- =====================================================
 -- 2. VALIDATE TOTAL EVALUATION WEIGHT (<= 100%)
 -- =====================================================

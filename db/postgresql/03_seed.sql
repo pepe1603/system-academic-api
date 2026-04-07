@@ -131,24 +131,6 @@ JOIN permission p ON p.code IN ('COURSE_VIEW', 'GRADE_VIEW', 'KARDEX_VIEW', 'BOL
 WHERE r.name = 'DIRECTOR';
 
 -- =====================================================
--- 4. INSTITUTION DATA
--- =====================================================
-
-INSERT INTO institution (name, address, phone, email, website, mission, vision, history, values, logo_url)
-VALUES (
-    'Escuela Normal Emiliano Zapata',
-    'Av. principal S/N, Col. Centro',
-    '+52 999 999 9999',
-    'contacto@enez.edu.mx',
-    'https://www.enez.edu.mx',
-    'Formar profesionales de la educación con excelencia académica, compromiso social y valores éticos.',
-    'Ser una institución líder en la formación de educadores de calidad, contribuyendo al desarrollo integral de la sociedad.',
-    'Institución de educación superior comprometida con la excelencia académica desde su fundación.',
-    'Integridad, Excelencia, Compromiso, Innovación, Servicio.',
-    NULL
-);
-
--- =====================================================
 -- 5. ACADEMIC SEMESTERS
 -- =====================================================
 
@@ -399,46 +381,8 @@ INSERT INTO system_configuration (config_key, config_value, description, data_ty
 -- =====================================================
 
 INSERT INTO app_user (username, email, password_hash, is_active, created_at)
-VALUES ('admin', 'admin@enez.edu.mx', '$2a$10$7EqJtq98hPqEX7fNZaFWoOQW6Z9uGq5Q8K4JpN96CBrum1BgFi7qS', TRUE, now());
+VALUES ('admin', '000316jose@gmail.com', '$2a$10$7EqJtq98hPqEX7fNZaFWoOQW6Z9uGq5Q8K4JpN96CBrum1BgFi7qS', TRUE, now());
 
 -- Assign ADMIN role
 INSERT INTO user_role (user_id, role_id)
 SELECT u.id, r.id FROM app_user u JOIN role r ON r.name = 'ADMIN' WHERE u.username = 'admin';
-
--- =====================================================
--- 14. NEWS
--- =====================================================
-
-INSERT INTO news (title, content, is_published) VALUES
-('Inicio del Semestre 2025-1', 'Se da inicio oficial al nuevo semestre académico. Bienvenidos estudiantes.', TRUE),
-('Convocatoria de Inscripción 2025', 'Inscripciones abiertas para nuevo ingreso. Consulta los requisitos.', TRUE),
-('Premio a la Excelencia Académica', 'Convocatoria para estudiantes con promedio mayor a 90.', TRUE),
-('Semana de la Educación 2025', 'Evento académico con conferencias y talleres pedagógicos.', TRUE);
-
--- =====================================================
--- 15. EVENTS
--- =====================================================
-
-INSERT INTO event (title, description, event_date, location, is_published) VALUES
-('Semana Pedagógica', 'Evento académico con conferencias y talleres sobre metodología educativa.', '2025-03-15', 'Auditorio Principal', TRUE),
-('Feria de Proyectos', 'Presentaciones de proyectos finales de semestre.', '2025-06-10', 'Plantel Central', TRUE),
-('Conferencia: Futuro de la Educación', 'Charla con especialistas en educación.', '2025-04-20', 'Sala de Videoconferencias', TRUE),
-('Congreso de Educación Normal', 'Encuentro de escuelas normales de la región.', '2025-05-15', 'Auditorio Principal', TRUE);
-
--- =====================================================
--- 16. PORTAL ADVERTISEMENTS
--- =====================================================
-
-INSERT INTO portal_advertisement (title, description, image_url, link_url, position, display_order, is_published, start_date, end_date)
-VALUES 
-('Admisiones 2025', 'Inscripciones abiertas para nuevo ingreso', '/images/banners/admision2025.jpg', '/admisiones', 'BANNER', 1, TRUE, '2025-01-01', '2025-03-31'),
-('Becas Disponibles', 'Programas de beca para estudiantes', '/images/banners/becas.jpg', '/becas', 'SIDEBAR', 1, TRUE, NULL, NULL);
-
--- =====================================================
--- 17. EDUCATIONAL RESOURCES
--- =====================================================
-
-INSERT INTO educational_resource (title, description, resource_type, resource_url, is_published) VALUES
-('Manual de Didáctica General', 'Guía completa de métodos de enseñanza', 'PDF', '/recursos/lep103/manual.pdf', TRUE),
-('Video: Estrategias de Aprendizaje', 'Tutorial sobre estrategias didácticas', 'VIDEO', 'https://youtube.com/watch?v=ejemplo', TRUE),
-('Recursos para Matemáticas', 'Materiales para la enseñanza de matemáticas', 'LINK', 'https://www.math.edu.mx/', TRUE);

@@ -93,6 +93,7 @@ psql -U postgres -d academic_system -f 04_security.sql
 - `certificate` - Certificados
 - `guardian` - Tutores
 - `student_document` - Documentos de estudiantes
+- `educational_resource` - Recursos educativos
 - `system_configuration` - Configuración del sistema
 - `access_audit` - Auditoría de accesos
 
