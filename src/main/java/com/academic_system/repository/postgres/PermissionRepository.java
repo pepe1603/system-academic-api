@@ -1,6 +1,6 @@
-package com.academic_system.repository;
+package com.academic_system.repository.postgres;
 
-import com.academic_system.entity.Permission;
+import com.academic_system.entity.postgres.Permission;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
