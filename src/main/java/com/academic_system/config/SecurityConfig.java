@@ -43,10 +43,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/public/**",
+                                "/api/server/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+                        .requestMatchers("/api/server/monitor").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
