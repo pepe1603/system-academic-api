@@ -22,6 +22,8 @@ public class OtpService {
     private static final String OTP_KEY_PREFIX = "otp:";
     private static final String ATTEMPTS_KEY_PREFIX = "otp:attempts:";
     private static final String LOCKOUT_KEY_PREFIX = "otp:lockout:";
+    private static final String VERIFIED_KEY_PREFIX = "otp:verified:";
+    private static final String REQUEST_COUNT_KEY_PREFIX = "otp:request:";
 
     @Value("${otp.expiration-minutes:5}")
     private int expirationMinutes;
@@ -148,6 +150,35 @@ public class OtpService {
     public boolean hasPendingOtp(String purpose, String identifier) {
         String key = buildKey(purpose, identifier);
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+    public void markOtpVerified(String purpose, String identifier) {
+        String key = VERIFIED_KEY_PREFIX + purpose + ":" + identifier;
+        redisTemplate.opsForValue().set(key, "1", 30, TimeUnit.MINUTES);
+    }
+
+    public boolean isOtpVerified(String purpose, String identifier) {
+        String key = VERIFIED_KEY_PREFIX + purpose + ":" + identifier;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+    public void clearOtpVerified(String purpose, String identifier) {
+        String key = VERIFIED_KEY_PREFIX + purpose + ":" + identifier;
+        redisTemplate.delete(key);
+    }
+
+    public boolean canRequestOtp(String purpose, String identifier) {
+        String key = REQUEST_COUNT_KEY_PREFIX + purpose + ":" + identifier;
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1) {
+            redisTemplate.expire(key, Duration.ofHours(24));
+        }
+        return count != null && count <= 10;
+    }
+
+    public void resetRequestCount(String purpose, String identifier) {
+        String key = REQUEST_COUNT_KEY_PREFIX + purpose + ":" + identifier;
+        redisTemplate.delete(key);
     }
 
     private String generateRandomOtp() {

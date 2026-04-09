@@ -68,6 +68,7 @@ public class AuthController {
         OtpService.OtpVerifyResult result = otpService.verifyOtp(purpose, request.getEmail(), request.getCode());
 
         if (result.isSuccess()) {
+            otpService.markOtpVerified(purpose, request.getEmail());
             return ResponseEntity.ok(ApiResponse.success("Código verificado correctamente", null));
         } else if (result.isLocked()) {
             return ResponseEntity.status(429)
