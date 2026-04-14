@@ -44,11 +44,17 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/public/**",
                                 "/api/server/health",
+                                "/api/portal/institution",
+                                "/api/portal/news",
+                                "/api/portal/events",
+                                "/api/portal/ads",
+                                "/api/portal/contact",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
                         .requestMatchers("/api/server/monitor").authenticated()
+                        .requestMatchers("/api/portal/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
