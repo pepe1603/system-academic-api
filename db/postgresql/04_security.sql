@@ -1,6 +1,6 @@
 -- =====================================================
 -- ADD SECURITY COLUMNS TO app_user
--- Run this AFTER 01_schema_core.sql
+-- Run this AFTER 01_schema_academic.sql
 -- =====================================================
 
 -- Password change tracking

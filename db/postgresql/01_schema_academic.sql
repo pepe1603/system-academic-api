@@ -2,7 +2,7 @@
 -- DATABASE CREATION
 -- =====================================================
 
-CREATE DATABASE academic_system;
+--CREATE DATABASE academic_system;
 
 -- Connect to academic_system before running the rest.
 
@@ -688,100 +688,9 @@ CREATE TABLE student_document (
 CREATE INDEX idx_student_document_student ON student_document(student_id);
 
 -- =====================================================
--- 11. CONFIGURATION (no dependencies)
+-- 11. EDUCATIONAL RESOURCES (depends on course)
 -- =====================================================
 
-CREATE TABLE system_configuration (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    config_key VARCHAR(50) NOT NULL UNIQUE,
-    config_value TEXT NOT NULL,
-    description TEXT,
-    data_type VARCHAR(20) DEFAULT 'STRING' CHECK (data_type IN ('STRING', 'NUMBER', 'BOOLEAN', 'JSON')),
-    module VARCHAR(50),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ
-);
-
--- =====================================================
--- 12. PUBLIC PORTAL
--- =====================================================
-
--- Institution (no dependencies)
-CREATE TABLE institution (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(200),
-    address TEXT,
-    phone VARCHAR(20),
-    email VARCHAR(150),
-    website VARCHAR(200),
-    mission TEXT,
-    vision TEXT,
-    history TEXT,
-    values TEXT,
-    logo_url TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- News (no dependencies)
-CREATE TABLE news (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title VARCHAR(200),
-    content TEXT,
-    image_url TEXT,
-    is_published BOOLEAN DEFAULT TRUE,
-    is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ
-);
-
--- Event (no dependencies)
-CREATE TABLE event (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title VARCHAR(200),
-    description TEXT,
-    event_date DATE,
-    location VARCHAR(200),
-    is_published BOOLEAN DEFAULT TRUE,
-    is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ
-);
-
--- Portal Advertisement (no dependencies)
-CREATE TABLE portal_advertisement (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title VARCHAR(200) NOT NULL,
-    description TEXT,
-    image_url TEXT,
-    link_url VARCHAR(500),
-    position VARCHAR(20) DEFAULT 'BANNER' CHECK (position IN ('BANNER', 'SIDEBAR', 'FOOTER')),
-    display_order INTEGER DEFAULT 0,
-    is_published BOOLEAN DEFAULT TRUE,
-    start_date DATE,
-    end_date DATE,
-    is_deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ
-);
-
--- Portal Contact (no dependencies)
-CREATE TABLE portal_contact (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    full_name VARCHAR(150) NOT NULL,
-    email VARCHAR(150) NOT NULL,
-    phone VARCHAR(20),
-    subject VARCHAR(200) NOT NULL,
-    message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    is_responded BOOLEAN DEFAULT FALSE,
-    response TEXT,
-    response_date TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Educational Resource (depends on course)
 CREATE TABLE educational_resource (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR(200) NOT NULL,
@@ -792,6 +701,24 @@ CREATE TABLE educational_resource (
     course_id UUID REFERENCES course(id) ON DELETE SET NULL,
     is_published BOOLEAN DEFAULT TRUE,
     is_deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_educational_resource_course ON educational_resource(course_id);
+
+-- =====================================================
+-- 12. CONFIGURATION (no dependencies)
+-- =====================================================
+
+CREATE TABLE system_configuration (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    config_key VARCHAR(50) NOT NULL UNIQUE,
+    config_value TEXT NOT NULL,
+    description TEXT,
+    data_type VARCHAR(20) DEFAULT 'STRING' CHECK (data_type IN ('STRING', 'NUMBER', 'BOOLEAN', 'JSON')),
+    module VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ
 );

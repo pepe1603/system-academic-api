@@ -1,13 +1,13 @@
 package com.academic_system.service;
 
 import com.academic_system.dto.auth.*;
-import com.academic_system.entity.PasswordRecovery;
-import com.academic_system.entity.User;
-import com.academic_system.entity.UserSession;
+
+import com.academic_system.entity.postgres.User;
+import com.academic_system.entity.postgres.UserSession;
 import com.academic_system.exception.PasswordChangeRequiredException;
-import com.academic_system.repository.PasswordRecoveryRepository;
-import com.academic_system.repository.UserRepository;
-import com.academic_system.repository.UserSessionRepository;
+import com.academic_system.repository.postgres.PasswordRecoveryRepository;
+import com.academic_system.repository.postgres.UserRepository;
+import com.academic_system.repository.postgres.UserSessionRepository;
 import com.academic_system.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -222,7 +222,13 @@ public class AuthService {
     // === RECUPERACIÓN DE CONTRASEÑA ===
 
     public ApiResponse<Void> requestPasswordRecovery(PasswordRecoveryRequest request) {
-        userRepository.findByEmail(request.getEmail())
+        String email = request.getEmail();
+        
+        if (!otpService.canRequestOtp("PASSWORD_RECOVERY", email)) {
+            return ApiResponse.error("Ha excedido el límite de solicitudes. Intente de nuevo en 24 horas");
+        }
+        
+        userRepository.findByEmail(email)
                 .ifPresent(user -> {
                     otpService.sendOtpByEmail(user.getEmail(), "PASSWORD_RECOVERY");
                 });
@@ -233,6 +239,10 @@ public class AuthService {
     public ApiResponse<Void> resetPassword(ResetPasswordRequest request) {
         String email = request.getEmail();
         String code = request.getToken();
+
+        if (!otpService.isOtpVerified("PASSWORD_RECOVERY", email)) {
+            return ApiResponse.error("Debe verificar el código OTP antes de restablecer la contraseña");
+        }
 
         OtpService.OtpVerifyResult result = otpService.verifyOtp("PASSWORD_RECOVERY", email, code);
         
@@ -258,6 +268,8 @@ public class AuthService {
         user.setPasswordChangedAt(LocalDateTime.now());
         user.setMustChangePassword(false);
         userRepository.save(user);
+
+        otpService.clearOtpVerified("PASSWORD_RECOVERY", email);
 
         return ApiResponse.success("Contraseña restablecida exitosamente", null);
     }

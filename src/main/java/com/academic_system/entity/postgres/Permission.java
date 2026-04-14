@@ -1,4 +1,4 @@
-package com.academic_system.entity;
+package com.academic_system.entity.postgres;
 
 import jakarta.persistence.*;
 import lombok.*;

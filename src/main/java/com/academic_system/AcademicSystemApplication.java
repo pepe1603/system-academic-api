@@ -18,6 +18,11 @@ public class AcademicSystemApplication {
 		System.setProperty("URL_DATABASE_POSTGRESQL", dbUrl);
 		System.setProperty("USERNAME_POSTGRESQL", dotenv.get("USERNAME_POSTGRESQL"));
 		System.setProperty("PASSWORD_POSTGRESQL", dotenv.get("PASSWORD_POSTGRESQL"));
+		System.setProperty("MYSQL_HOST", dotenv.get("MYSQL_HOST"));
+		System.setProperty("MYSQL_PORT", dotenv.get("MYSQL_PORT"));
+		System.setProperty("MYSQL_DATABASE", dotenv.get("MYSQL_DATABASE"));
+		System.setProperty("USERNAME_MYSQL", dotenv.get("USERNAME_MYSQL"));
+		System.setProperty("PASSWORD_MYSQL", dotenv.get("PASSWORD_MYSQL"));
 		System.setProperty("REDIS_HOST", dotenv.get("REDIS_HOST"));
 		System.setProperty("REDIS_PORT", dotenv.get("REDIS_PORT", "6379"));
 		System.setProperty("REDIS_PASSWORD", dotenv.get("REDIS_PASSWORD", ""));

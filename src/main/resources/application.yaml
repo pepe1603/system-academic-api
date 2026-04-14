@@ -3,26 +3,28 @@ spring:
     name: academic-system
 
   datasource:
-    url: ${URL_DATABASE_POSTGRESQL:jdbc:postgresql://localhost:5432/academic_system}
-    username: ${USERNAME_POSTGRESQL:postgres}
-    password: ${PASSWORD_POSTGRESQL:postgres}
-    driver-class-name: org.postgresql.Driver
+    postgres-primary:
+      jdbc-url: ${URL_DATABASE_POSTGRESQL:jdbc:postgresql://localhost:5432/academic_system}
+      username: ${USERNAME_POSTGRESQL:postgres}
+      password: ${PASSWORD_POSTGRESQL:postgres}
+      driver-class-name: org.postgresql.Driver
+
+    mysql-portal:
+      jdbc-url: jdbc:mysql://${MYSQL_HOST:mysql-3de3b14e-system-academic-db.g.aivencloud.com}:${MYSQL_PORT:25624}/${MYSQL_DATABASE:system-academic-portal-public}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      username: ${USERNAME_MYSQL:avnadmin}
+      password: ${PASSWORD_MYSQL:avnadmin}
+      driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+    open-in-view: false
 
   jackson:
     serialization:
       write-dates-as-timestamps: false
 
-  # === CONFIGURACIÓN SMTP (GMAIL) ===
-  # Para Gmail: Generar App Password en Google Account > Security > 2-Step Verification > App Passwords
   mail:
     host: smtp.gmail.com
     port: 587
@@ -34,11 +36,7 @@ spring:
           auth: true
           starttls:
             enable: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
 
-  # === CONFIGURACIÓN REDIS ===
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -54,7 +52,6 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
 
-# === CONFIGURACIÓN DE SEGURIDAD ===
 security:
   password:
     expiry-days: 90
@@ -66,7 +63,6 @@ security:
     login-attempts: 10
     recovery-attempts: 3
 
-# === CONFIGURACIÓN OTP ===
 otp:
   expiration-minutes: 5
   length: 6
