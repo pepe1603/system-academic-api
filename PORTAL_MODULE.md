@@ -45,12 +45,14 @@ Desarrollo del módulo del portal público académico que incluye:
 - [x] 1.6 Corregir errores de conexión Aiven (límite pool)
 - [x] 1.7 Corregir columna `values` reservada en MySQL
 
-### Fase 2: Endpoints Públicos (sin auth) (Local: fase-2)
-- [ ] 2.1 GET /api/portal/institution - Info de institución
-- [ ] 2.2 GET /api/portal/news - Listar noticias (con paginación)
-- [ ] 2.3 GET /api/portal/events - Listar eventos (con paginación)
-- [ ] 2.4 GET /api/portal/ads - Listar anuncios/banners
-- [ ] 2.5 POST /api/portal/contact - Enviar mensaje de contacto
+### Fase 2: Endpoints Públicos (sin auth) (Local: fase-2) ✅ COMPLETADO
+- [x] 2.1 GET /api/portal/institution - Info de institución
+- [x] 2.2 GET /api/portal/news - Listar noticias
+- [x] 2.3 GET /api/portal/news/paged - Noticias paginadas
+- [x] 2.4 GET /api/portal/events - Listar eventos
+- [x] 2.5 GET /api/portal/events/paged - Eventos paginados
+- [x] 2.6 GET /api/portal/ads - Listar anuncios/banners
+- [x] 2.7 POST /api/portal/contact - Enviar mensaje de contacto
 
 ### Fase 3: Endpoints Privados (con auth - admin) (Local: fase-3)
 - [ ] 3.1 CRUD News (crear, editar, eliminar noticias)

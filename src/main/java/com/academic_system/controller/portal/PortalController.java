@@ -4,6 +4,8 @@ import com.academic_system.dto.auth.ApiResponse;
 import com.academic_system.dto.portal.*;
 import com.academic_system.service.portal.PortalService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -43,6 +45,14 @@ public class PortalController {
         return ResponseEntity.ok(ApiResponse.success(news));
     }
 
+    @GetMapping("/news/paged")
+    public ResponseEntity<ApiResponse<Page<NewsDTO>>> getNewsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<NewsDTO> news = portalService.getPublishedNewsPaged(page, size);
+        return ResponseEntity.ok(ApiResponse.success(news));
+    }
+
     @GetMapping("/news/{id}")
     public ResponseEntity<ApiResponse<NewsDTO>> getNewsById(@PathVariable String id) {
         NewsDTO news = portalService.getNewsById(id);
@@ -78,6 +88,14 @@ public class PortalController {
     @GetMapping("/events")
     public ResponseEntity<ApiResponse<List<EventDTO>>> getEvents() {
         List<EventDTO> events = portalService.getPublishedEvents();
+        return ResponseEntity.ok(ApiResponse.success(events));
+    }
+
+    @GetMapping("/events/paged")
+    public ResponseEntity<ApiResponse<Page<EventDTO>>> getEventsPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<EventDTO> events = portalService.getPublishedEventsPaged(page, size);
         return ResponseEntity.ok(ApiResponse.success(events));
     }
 

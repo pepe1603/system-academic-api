@@ -4,6 +4,10 @@ import com.academic_system.dto.portal.*;
 import com.academic_system.entity.mysql.*;
 import com.academic_system.repository.mysql.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,6 +63,12 @@ public class PortalService {
                 .collect(Collectors.toList());
     }
 
+    public Page<NewsDTO> getPublishedNewsPaged(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return newsRepository.findByIsPublishedTrueAndIsDeletedFalse(pageable)
+                .map(this::toNewsDTO);
+    }
+
     public NewsDTO getNewsById(String id) {
         return newsRepository.findById(id)
                 .map(this::toNewsDTO)
@@ -109,6 +119,12 @@ public class PortalService {
                 .stream()
                 .map(this::toEventDTO)
                 .collect(Collectors.toList());
+    }
+
+    public Page<EventDTO> getPublishedEventsPaged(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("eventDate").descending());
+        return eventRepository.findByIsPublishedTrueAndIsDeletedFalse(pageable)
+                .map(this::toEventDTO);
     }
 
     public EventDTO getEventById(String id) {
