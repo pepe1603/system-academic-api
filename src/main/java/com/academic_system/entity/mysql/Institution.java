@@ -42,7 +42,7 @@ public class Institution {
     @Column(name = "history", columnDefinition = "TEXT")
     private String history;
 
-    @Column(name = "values", columnDefinition = "TEXT")
+    @Column(name = "`values`", columnDefinition = "TEXT")
     private String values;
 
     @Column(name = "logo_url", columnDefinition = "TEXT")

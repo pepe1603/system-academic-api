@@ -8,12 +8,26 @@ spring:
       username: ${USERNAME_POSTGRESQL:postgres}
       password: ${PASSWORD_POSTGRESQL:postgres}
       driver-class-name: org.postgresql.Driver
+      hikari:
+        maximum-pool-size: 2
+        minimum-idle: 1
+        idle-timeout: 120000
+        max-lifetime: 300000
+        connection-timeout: 10000
+        pool-name: PostgresPool
 
     mysql-portal:
-      jdbc-url: jdbc:mysql://${MYSQL_HOST:mysql-3de3b14e-system-academic-db.g.aivencloud.com}:${MYSQL_PORT:25624}/${MYSQL_DATABASE:system-academic-portal-public}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      jdbc-url: jdbc:mysql://${MYSQL_HOST:mysql-3de3b14e-system-academic-db.g.aivencloud.com}:${MYSQL_PORT:25624}/${MYSQL_DATABASE:system-academic-portal-public}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&autoReconnect=true&connectTimeout=10000
       username: ${USERNAME_MYSQL:avnadmin}
       password: ${PASSWORD_MYSQL:avnadmin}
       driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 2
+        minimum-idle: 1
+        idle-timeout: 120000
+        max-lifetime: 300000
+        connection-timeout: 10000
+        pool-name: MySqlPool
 
   jpa:
     hibernate:
