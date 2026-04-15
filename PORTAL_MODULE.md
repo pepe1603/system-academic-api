@@ -36,11 +36,14 @@ Desarrollo del módulo del portal público académico que incluye:
 
 ## Plan de Acción
 
-### Fase 1: Estructura Base (Local: fase-1)
+### Fase 1: Estructura Base (Local: fase-1) ✅ COMPLETADO
 - [x] 1.1 Verificar entities y repositories existentes
 - [x] 1.2 Crear DTOs para el portal (5 DTOs creados)
 - [x] 1.3 Crear Services del portal (PortalService)
 - [x] 1.4 Crear Controllers del portal (PortalController)
+- [x] 1.5 Configurar seguridad para endpoints públicos
+- [x] 1.6 Corregir errores de conexión Aiven (límite pool)
+- [x] 1.7 Corregir columna `values` reservada en MySQL
 
 ### Fase 2: Endpoints Públicos (sin auth) (Local: fase-2)
 - [ ] 2.1 GET /api/portal/institution - Info de institución

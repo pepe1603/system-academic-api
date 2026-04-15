@@ -340,6 +340,8 @@ Authorization: Bearer {{accessToken}}
 "Gracias por contactarnos. Su inscripción está abierta..."
 ```
 
+nota: no marca cmomo leido cuando se responde , se queda en responde en false
+
 ---
 
 ## Collection Postman - Variables
