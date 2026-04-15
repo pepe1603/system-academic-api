@@ -54,13 +54,19 @@ Desarrollo del módulo del portal público académico que incluye:
 - [x] 2.6 GET /api/portal/ads - Listar anuncios/banners
 - [x] 2.7 POST /api/portal/contact - Enviar mensaje de contacto
 
-### Fase 3: Endpoints Privados (con auth - admin) (Local: fase-3)
-- [ ] 3.1 CRUD News (crear, editar, eliminar noticias)
-- [ ] 3.2 CRUD Events (crear, editar, eliminar eventos)
-- [ ] 3.3 CRUD Advertisements (gestionar banners)
-- [ ] 3.4 CRUD Institution (editar info institucional)
-- [ ] 3.5 Ver/leer mensajes de contacto
-- [ ] 3.6 Responder mensajes de contacto
+### Fase 3: Endpoints Privados (con auth - admin) ✅ COMPLETADO
+- [x] 3.1 CRUD News (crear, editar, eliminar noticias)
+- [x] 3.2 CRUD Events (crear, editar, eliminar eventos)
+- [x] 3.3 CRUD Advertisements (gestionar banners)
+- [x] 3.4 CRUD Institution (editar info institucional)
+- [x] 3.5 Ver/leer mensajes de contacto
+- [x] 3.6 Responder mensajes de contacto
+
+### Fase 4: Testing y Validación (Local: fase-4)
+- [ ] 4.1 Probar endpoints públicos con Postman
+- [ ] 4.2 Probar endpoints admin con JWT
+- [ ] 4.3 Verificar paginación
+- [ ] 4.4 Validar respuestas de error
 
 ---
 

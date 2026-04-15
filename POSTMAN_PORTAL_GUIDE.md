@@ -105,6 +105,100 @@ GET http://localhost:8080/api/portal/news
 
 ---
 
+### GET `/news/paged`
+
+**Descripción**: Lista noticias con paginación
+
+**Request**:
+```
+GET http://localhost:8080/api/portal/news/paged?page=0&size=10
+```
+
+**Parámetros**:
+| Parámetro | Tipo | Default | Descripción |
+|-----------|------|---------|-------------|
+| page | int | 0 | Número de página (0-indexed) |
+| size | int | 10 | Elementos por página |
+
+**Respuesta (200)**:
+```json
+{
+    "success": true,
+    "message": null,
+    "data": {
+        "content": [
+            {
+                "id": "a4545c17-3233-11f1-837c-4a158e121aa6",
+                "title": "Inicio del Semestre 2025-1",
+                "content": "Se da inicio oficial al nuevo semestre académico. Bienvenidos estudiantes.",
+                "imageUrl": null,
+                "isPublished": true,
+                "isDeleted": false,
+                "createdAt": "2026-04-06T21:41:20",
+                "updatedAt": "2026-04-06T21:41:20"
+            },
+            {
+                "id": "a45462dc-3233-11f1-837c-4a158e121aa6",
+                "title": "Convocatoria de Inscripción 2025",
+                "content": "Inscripciones abiertas para nuevo ingreso. Consulta los requisitos.",
+                "imageUrl": null,
+                "isPublished": true,
+                "isDeleted": false,
+                "createdAt": "2026-04-06T21:41:20",
+                "updatedAt": "2026-04-06T21:41:20"
+            },
+            {
+                "id": "a4547c44-3233-11f1-837c-4a158e121aa6",
+                "title": "Premio a la Excelencia Académica",
+                "content": "Convocatoria para estudiantes con promedio mayor a 90.",
+                "imageUrl": null,
+                "isPublished": true,
+                "isDeleted": false,
+                "createdAt": "2026-04-06T21:41:20",
+                "updatedAt": "2026-04-06T21:41:20"
+            },
+            {
+                "id": "a4547d78-3233-11f1-837c-4a158e121aa6",
+                "title": "Semana de la Educación 2025",
+                "content": "Evento académico con conferencias y talleres pedagógicos.",
+                "imageUrl": null,
+                "isPublished": true,
+                "isDeleted": false,
+                "createdAt": "2026-04-06T21:41:20",
+                "updatedAt": "2026-04-06T21:41:20"
+            }
+        ],
+        "pageable": {
+            "pageNumber": 0,
+            "pageSize": 10,
+            "sort": {
+                "empty": false,
+                "sorted": true,
+                "unsorted": false
+            },
+            "offset": 0,
+            "paged": true,
+            "unpaged": false
+        },
+        "last": true,
+        "totalPages": 1,
+        "totalElements": 4,
+        "first": true,
+        "size": 10,
+        "number": 0,
+        "sort": {
+            "empty": false,
+            "sorted": true,
+            "unsorted": false
+        },
+        "numberOfElements": 4,
+        "empty": false
+    }
+}
+```
+
+---
+
 ### GET `/events`
 
 **Descripción**: Lista todos los eventos publicados
@@ -112,6 +206,46 @@ GET http://localhost:8080/api/portal/news
 **Request**:
 ```
 GET http://localhost:8080/api/portal/events
+```
+
+---
+
+### GET `/events/paged`
+
+**Descripción**: Lista eventos con paginación
+
+**Request**:
+```
+GET http://localhost:8080/api/portal/events/paged?page=0&size=10
+```
+
+**Parámetros**:
+| Parámetro | Tipo | Default | Descripción |
+|-----------|------|---------|-------------|
+| page | int | 0 | Número de página (0-indexed) |
+| size | int | 10 | Elementos por página |
+
+**Respuesta (200)**:
+```json
+{
+    "success": true,
+    "message": null,
+    "data": {
+        "content": [
+            {
+                "id": "...",
+                "title": "Evento 1",
+                "description": "...",
+                "eventDate": "2025-06-10",
+                "location": "Auditorio Principal"
+            }
+        ],
+        "totalElements": 4,
+        "totalPages": 1,
+        "size": 10,
+        "number": 0
+    }
+}
 ```
 
 ---
@@ -335,16 +469,132 @@ PUT http://localhost:8080/api/portal/contact/{id}/read
 Authorization: Bearer {{accessToken}}
 ```
 
-**Request Body**:
-```json
-"Gracias por contactarnos. Su inscripción está abierta..."
+**Request Body** (plain text):
+```
+Gracias por contactarnos. Su inscripción está abierta...
 ```
 
-nota: no marca cmomo leido cuando se responde , se queda en responde en false
+**Nota**: Al responder, automáticamente se marca el mensaje como leído.
 
 ---
 
-## Collection Postman - Variables
+## 3. Request Bodies Completos
+
+### Auth - Login
+```json
+{
+    "username": "admin",
+    "password": "admin123"
+}
+```
+
+### PUT /api/portal/institution - Actualizar Institución
+```json
+{
+    "id": "a3b31a98-3233-11f1-837c-4a158e121aa6",
+    "name": "Escuela Normal Emiliano Zapata",
+    "address": "Av. Principal 123, Col. Centro",
+    "phone": "+52 999 123 4567",
+    "email": "contacto@enez.edu.mx",
+    "website": "https://www.enez.edu.mx",
+    "mission": "Formar profesionales de la educación con calidad y compromiso social",
+    "vision": "Ser una institución líder en formación docente",
+    "history": "Historia de la institución...",
+    "values": "Integridad, Excelencia, Compromiso, Innovación",
+    "logoUrl": "/images/logo.png"
+}
+```
+
+### POST /api/portal/news - Crear Noticia
+```json
+{
+    "title": "Nueva Noticia Importante",
+    "content": "Contenido completo de la noticia. Puede contener múltiples párrafos y detalles relevantes sobre el evento o announcement.",
+    "imageUrl": "/images/news/2025-noticia.jpg",
+    "isPublished": true
+}
+```
+
+### PUT /api/portal/news/{id} - Actualizar Noticia
+```json
+{
+    "title": "Título Actualizado",
+    "content": "Nuevo contenido de la noticia...",
+    "imageUrl": "/images/news/nueva-imagen.jpg",
+    "isPublished": true
+}
+```
+
+### POST /api/portal/events - Crear Evento
+```json
+{
+    "title": "Conferencia de Matemáticas 2025",
+    "description": "Conferencia sobre metodologías de enseñanza innovadoras en matemáticas para nivel básico y medio superior.",
+    "eventDate": "2025-06-15",
+    "location": "Auditorio Principal",
+    "isPublished": true
+}
+```
+
+### PUT /api/portal/events/{id} - Actualizar Evento
+```json
+{
+    "title": "Conferencia de Matemáticas - Fecha Cambiada",
+    "description": "Conferencia actualizada...",
+    "eventDate": "2025-06-20",
+    "location": "Salón de Eventos A",
+    "isPublished": true
+}
+```
+
+### POST /api/portal/ads - Crear Anuncio
+```json
+{
+    "title": "Programa de Becas 2025",
+    "description": "Convocatoria para estudiantes de nuevo ingreso. Consulta los requisitos completos en nuestra sección de admisiones.",
+    "imageUrl": "/images/ads/becas-2025.jpg",
+    "linkUrl": "/admisiones/becas",
+    "position": "BANNER",
+    "displayOrder": 1,
+    "isPublished": true,
+    "startDate": "2025-04-01",
+    "endDate": "2025-06-30"
+}
+```
+
+### PUT /api/portal/ads/{id} - Actualizar Anuncio
+```json
+{
+    "title": "Programa de Becas - Actualizado",
+    "description": "Nueva descripción...",
+    "imageUrl": "/images/ads/becas-updated.jpg",
+    "linkUrl": "/admisiones/becas",
+    "position": "BANNER",
+    "displayOrder": 1,
+    "isPublished": true,
+    "startDate": "2025-04-01",
+    "endDate": "2025-07-31"
+}
+```
+
+### POST /api/portal/contact - Enviar Mensaje de Contacto
+```json
+{
+    "fullName": "Juan Pérez López",
+    "email": "juan.perez@email.com",
+    "phone": "+52 999 123 4567",
+    "subject": "Consulta sobre programas académicos",
+    "message": "Hola, me gustaría obtener información sobre los programas de licenciaturas disponibles para el ciclo 2025-1. ¿Qué documentos necesito para el proceso de inscripción?"
+}
+```
+
+### POST /api/portal/contact/{id}/respond - Responder Mensaje
+**Content-Type: text/plain**
+
+Body (plain text, sin JSON):
+```
+Gracias por contactarnos. Le informamos que nuestro proceso de inscripción está abierto. Puede consultar los requisitos en nuestra página web o visitarnos directamente en oficina de admisiones.
+```
 
 ### Environment Variables Recomendadas
 

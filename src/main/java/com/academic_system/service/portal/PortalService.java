@@ -284,6 +284,7 @@ public class PortalService {
         
         contact.setResponse(response);
         contact.setIsResponded(true);
+        contact.setIsRead(true);
         contact.setResponseDate(LocalDateTime.now());
         
         contact = contactRepository.save(contact);
