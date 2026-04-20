@@ -4,6 +4,7 @@ import com.academic_system.dto.auth.*;
 
 import com.academic_system.entity.postgres.User;
 import com.academic_system.entity.postgres.UserSession;
+import com.academic_system.exception.EmailNotVerifiedException;
 import com.academic_system.exception.PasswordChangeRequiredException;
 import com.academic_system.repository.postgres.PasswordRecoveryRepository;
 import com.academic_system.repository.postgres.UserRepository;
@@ -57,19 +58,18 @@ public class AuthService {
             throw new LockedException("Cuenta bloqueada por intentos fallidos. Contacte al administrador.");
         }
 
-        // Verificar si debe cambiar contraseña
-        if (Boolean.TRUE.equals(user.getMustChangePassword())) {
-            throw new PasswordChangeRequiredException("Debe cambiar su contraseña antes de continuar");
+        // Verificar si el email ha sido verificado
+        if (Boolean.TRUE.equals(user.getMustVerifyEmail()) && !Boolean.TRUE.equals(user.getIsVerified())) {
+            throw new EmailNotVerifiedException("Debe verificar su cuenta antes de iniciar sesión. Revise su correo.");
         }
 
         // Verificar si la contraseña está expirada
         if (user.isPasswordExpired(passwordExpiryDays)) {
             user.setMustChangePassword(true);
             userRepository.save(user);
-            throw new PasswordChangeRequiredException("Su contraseña ha expirado. Debe cambiarla.");
         }
 
-        // Autenticar
+        // Autenticar (valida password)
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getUsername(),
@@ -78,6 +78,11 @@ public class AuthService {
         );
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+        // Verificar si debe cambiar contraseña DESPUÉS de validar password
+        if (Boolean.TRUE.equals(user.getMustChangePassword())) {
+            throw new PasswordChangeRequiredException("Debe cambiar su contraseña antes de continuar");
+        }
 
         // Si tiene 2FA habilitado, enviar código OTP por email
         if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
