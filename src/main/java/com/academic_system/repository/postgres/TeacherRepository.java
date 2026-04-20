@@ -21,4 +21,8 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
     boolean existsByRfc(String rfc);
 
     boolean existsByCurp(String curp);
+
+    Optional<Teacher> findByCurpAndIsActiveTrueAndIsDeletedFalse(String curp);
+
+    Optional<Teacher> findByCurpAndIsDeletedFalse(String curp);
 }

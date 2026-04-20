@@ -64,6 +64,22 @@ public class User {
     @Column(name = "two_factor_backup_codes", columnDefinition = "TEXT")
     private String twoFactorBackupCodes;
 
+    // === VERIFICACIÓN ===
+    
+    @Column(name = "is_verified")
+    @Builder.Default
+    private Boolean isVerified = false;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @Column(name = "temp_password")
+    private String tempPassword;
+
+    @Column(name = "must_verify_email")
+    @Builder.Default
+    private Boolean mustVerifyEmail = false;
+
     // === ESTADO ===
     
     @Column(name = "is_active")

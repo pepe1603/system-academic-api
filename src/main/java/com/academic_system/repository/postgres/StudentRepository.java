@@ -19,4 +19,8 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     boolean existsByCurp(String curp);
 
     boolean existsByEnrollmentNumber(String enrollmentNumber);
+
+    Optional<Student> findByCurpAndIsActiveTrueAndIsDeletedFalse(String curp);
+
+    Optional<Student> findByCurpAndIsDeletedFalse(String curp);
 }

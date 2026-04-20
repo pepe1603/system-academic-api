@@ -29,6 +29,13 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 | POST | `/2fa/request-setup` | Solicitar setup 2FA | Sí |
 | POST | `/2fa/enable` | Habilitar 2FA | Sí |
 | POST | `/2fa/disable` | Deshabilitar 2FA | Sí |
+| POST | `/registration/init` | Iniciar registro público | No |
+| POST | `/registration/verify` | Verificar registro con OTP | No |
+| POST | `/registration/verify-email` | Verificar email | No |
+| GET | `/admin/users` | Listar usuarios | Sí (ADMIN) |
+| POST | `/admin/users` | Crear usuario | Sí (ADMIN) |
+| GET | `/admin/users/registrations` | Ver solicitudes de registro | Sí (ADMIN) |
+| GET | `/admin/users/registrations/pending` | Ver solicitudes pendientes | Sí (ADMIN) |
 
 ---
 
@@ -681,3 +688,303 @@ if (pm.response.code === 200 && pm.response.json().data.accessToken) {
 }
 ```
 **Solución**: El endpoint requiere rol ADMIN. Asegúrese de usar un token de administrador.
+
+---
+
+## 15. Registro Público (Nuevo Flujo)
+
+### POST `/api/registration/init`
+
+**Descripción**: Inicia el proceso de registro público. Requiere CURP válido en el sistema académico.
+
+**Request Body**:
+```json
+{
+    "curp": "XAXX010101HNEXXXX18",
+    "email": "usuario@email.com"
+}
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "success": true,
+    "message": "Código de verificación enviado",
+    "data": {
+        "id": "uuid",
+        "curp": "XAXX010101HNEXXXX18",
+        "email": "usuario@email.com",
+        "status": "PENDING",
+        "requestedAt": "2026-04-19T10:00:00"
+    }
+}
+```
+
+**Error (400) - CURP no válido**:
+```json
+{
+    "success": false,
+    "message": "No se encontró registro académico activo con este CURP",
+    "data": null
+}
+```
+
+---
+
+### POST `/api/registration/verify`
+
+**Descripción**: Verifica el código OTP y crea la cuenta de usuario.
+
+**Request Body**:
+```json
+{
+    "curp": "XAXX010101HNEXXXX18",
+    "otp": "123456"
+}
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "success": true,
+    "message": "Registro completado",
+    "data": {
+        "id": "uuid",
+        "curp": "XAXX010101HNEXXXX18",
+        "email": "usuario@email.com",
+        "status": "APPROVED",
+        "requestedAt": "2026-04-19T10:00:00",
+        "processedAt": "2026-04-19T10:05:00"
+    }
+}
+```
+
+**Nota**: Al verificar, se crea el usuario con password temporal. Debe verificar su email antes de hacer login.
+
+---
+
+### POST `/api/registration/verify-email`
+
+**Descripción**: Verifica el email del usuario creado.
+
+**Parámetros de Query**:
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| userId | string | UUID del usuario |
+| code | string | Código OTP de 6 dígitos |
+
+**Ejemplo**:
+```
+POST {{baseUrl}}/registration/verify-email?userId=uuid&code=123456
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "success": true,
+    "message": "Email verificado",
+    "data": null
+}
+```
+
+---
+
+## 16. Gestión de Usuarios (Admin)
+
+### GET `/api/admin/users`
+
+**Descripción**: Lista todos los usuarios del sistema.
+
+**Headers Requeridos**:
+```
+Authorization: Bearer {{adminAccessToken}}
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "success": true,
+    "message": null,
+    "data": [
+        {
+            "id": "uuid",
+            "username": "admin",
+            "email": "admin@enez.edu.mx",
+            "isActive": true,
+            "isVerified": true,
+            "mustVerifyEmail": false,
+            "roles": ["ADMIN"],
+            "createdAt": "2026-04-19T10:00:00"
+        }
+    ]
+}
+```
+
+---
+
+### POST `/api/admin/users`
+
+**Descripción**: Crea un usuario sin necesidad de registro académico.
+
+**Headers Requeridos**:
+```
+Authorization: Bearer {{adminAccessToken}}
+```
+
+**Request Body**:
+```json
+{
+    "email": "nuevo@email.com",
+    "curp": "XAXX010101HNEXXXX18",
+    "roles": ["STUDENT", "TEACHER"]
+}
+```
+
+**Request Body (sin relación académica)**:
+```json
+{
+    "email": "soporte@enez.edu.mx",
+    "roles": ["ADMIN"]
+}
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "success": true,
+    "message": "Usuario creado",
+    "data": {
+        "id": "uuid",
+        "username": "nuevo",
+        "email": "nuevo@email.com",
+        "isActive": true,
+        "isVerified": false,
+        "mustVerifyEmail": true,
+        "roles": ["STUDENT"],
+        "createdAt": "2026-04-19T10:00:00"
+    }
+}
+```
+
+**Nota**: El usuario creado recibe password temporal y debe verificar su email.
+
+---
+
+### GET `/api/admin/users/registrations`
+
+**Descripción**: Lista todas las solicitudes de registro.
+
+**Headers Requeridos**:
+```
+Authorization: Bearer {{adminAccessToken}}
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "success": true,
+    "message": null,
+    "data": [
+        {
+            "id": "uuid",
+            "curp": "XAXX010101HNEXXXX18",
+            "email": "usuario@email.com",
+            "status": "PENDING",
+            "requestedAt": "2026-04-19T10:00:00"
+        }
+    ]
+}
+```
+
+---
+
+### GET `/api/admin/users/registrations/pending`
+
+**Descripción**: Lista solo solicitudes pendientes.
+
+**Headers Requeridos**:
+```
+Authorization: Bearer {{adminAccessToken}}
+```
+
+---
+
+### DELETE `/api/admin/users/{id}` (Soft Delete)
+
+**Descripción**: Desactiva un usuario (soft delete).
+
+**Headers Requeridos**:
+```
+Authorization: Bearer {{adminAccessToken}}
+```
+
+**Respuesta Exitosa (200)**:
+```json
+{
+    "success": true,
+    "message": "Usuario eliminado",
+    "data": null
+}
+```
+
+---
+
+## 17. Flujo Completo de Registro Público
+
+### Paso 1: Iniciar Registro
+```
+POST /api/registration/init
+Body: { "curp": "XAXX010101HNEXXXX18", "email": "correo@ejemplo.com" }
+```
+→ Recibes código OTP por email
+
+### Paso 2: Verificar Registro
+```
+POST /api/registration/verify
+Body: { "curp": "XAXX010101HNEXXXX18", "otp": "123456" }
+```
+→ Se crea usuario con password temporal
+
+### Paso 3: Verificar Email
+```
+POST /api/registration/verify-email?userId={uuid}&code={codigo}
+```
+→ Email verificado, usuario puede hacer login
+
+### Paso 4: Login
+```
+POST /api/auth/login
+Body: { "username": "username", "password": "password_temporal" }
+```
+
+### Paso 5: Cambiar Contraseña
+```
+POST /api/auth/change-password
+Headers: Authorization: Bearer {accessToken}
+Body: { "currentPassword": "password_temporal", "newPassword": "nuevaPass123", "confirmPassword": "nuevaPass123" }
+```
+
+---
+
+## 18. Flujo Completo - Admin Crear Usuario
+
+### Paso 1: Admin Login
+```
+POST /api/auth/login
+Body: { "username": "admin", "password": "admin123" }
+```
+Guardar `accessToken`
+
+### Paso 2: Crear Usuario
+```
+POST /api/admin/users
+Headers: Authorization: Bearer {{accessToken}}
+Body: { "email": "nuevo@email.com", "curp": "XAXX010101HNEXXXX18", "roles": ["STUDENT"] }
+```
+
+### Paso 3: Notificar al Usuario
+El sistema envía email con username y password temporal al nuevo usuario.
+
+### Paso 4: Usuario-Verificar Email (como arriba)
+
+### Paso 5: Usuario-Login y Cambio de Contraseña (como arriba)
