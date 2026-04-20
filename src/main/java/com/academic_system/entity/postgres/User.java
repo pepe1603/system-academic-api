@@ -136,7 +136,7 @@ public class User {
 
     public boolean isPasswordExpired(int daysBeforeExpiry) {
         if (passwordChangedAt == null) {
-            return true;
+            return false;
         }
         return passwordChangedAt.plusDays(daysBeforeExpiry).isBefore(LocalDateTime.now());
     }
