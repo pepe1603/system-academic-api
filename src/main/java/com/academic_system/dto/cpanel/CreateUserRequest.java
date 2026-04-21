@@ -1,4 +1,4 @@
-package com.academic_system.dto.registration;
+package com.academic_system.dto.cpanel;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.UUID;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -21,6 +21,4 @@ public class CreateUserRequest {
     private String curp;
 
     private List<String> roles;
-
-    private UUID generationId;
 }

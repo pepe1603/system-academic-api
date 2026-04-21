@@ -1,58 +1,65 @@
-package com.academic_system.controller.admin;
+package com.academic_system.service;
 
-import com.academic_system.dto.auth.ApiResponse;
-import com.academic_system.dto.registration.CreateUserRequest;
-import com.academic_system.dto.registration.RegistrationRequestDTO;
+import com.academic_system.dto.cpanel.CreateUserRequest;
+import com.academic_system.dto.cpanel.UserDTO;
 import com.academic_system.entity.postgres.Role;
 import com.academic_system.entity.postgres.Student;
 import com.academic_system.entity.postgres.Teacher;
 import com.academic_system.entity.postgres.User;
 import com.academic_system.repository.postgres.*;
-import com.academic_system.service.EmailService;
-import com.academic_system.service.registration.RegistrationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Collectors;
 
-@RestController
-@RequestMapping("/api/admin/users")
+@Slf4j
+@Service
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
-public class UserManagementController {
+public class UserManagementService {
 
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
     private final RoleRepository roleRepository;
-    private final RegistrationService registrationService;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
     private final SecureRandom random = new SecureRandom();
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<UserDTO>>> getAllUsers() {
-        List<UserDTO> users = userRepository.findAll().stream()
-                .map(this::toUserDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(users));
+    private static final Set<String> ROLES_REQUIRING_CURP = Set.of("STUDENT", "TEACHER");
+    private static final Set<String> ROLES_WITHOUT_CURP = Set.of("ADMIN", "CONTROL_ESCOLAR", "DIRECTOR");
+
+    public Page<UserDTO> getAllUsers(Pageable pageable) {
+        Page<User> page = userRepository.findAll(pageable);
+        return page.map(this::toDTO);
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<UserDTO>> createUser(@RequestBody CreateUserRequest request) {
+    public UserDTO getUserById(String id) {
+        UUID uuid = UUID.fromString(id);
+        User user = userRepository.findById(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        return toDTO(user);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public UserDTO createUser(CreateUserRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalStateException("El email ya está registrado");
         }
+
+        validateRolesAndCurp(request);
 
         String tempPassword = generateTempPassword();
         String username = generateUsername(request.getEmail());
@@ -86,15 +93,15 @@ public class UserManagementController {
         user.setIsActive(true);
         user.setMustChangePassword(true);
 
-        Set<Role> userRoles = new java.util.HashSet<>();
+        Set<Role> userRoles = new HashSet<>();
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
-            final Set<Role> roles = userRoles;
             for (String roleName : request.getRoles()) {
-                roleRepository.findByName(roleName).ifPresent(roles::add);
+                roleRepository.findByName(roleName).ifPresent(userRoles::add);
             }
         } else {
             roleRepository.findByName("STUDENT").ifPresent(userRoles::add);
         }
+        user.setRoles(userRoles);
 
         user = userRepository.save(user);
 
@@ -106,33 +113,34 @@ public class UserManagementController {
             teacherRepository.save(teacher);
         }
 
-        try {
-            emailService.sendEmail(user.getEmail(), "Cuenta creada - Escuela Normal",
-                    "Su cuenta ha sido creada por el administrador.\n\n" +
-                    "Username: " + username + "\n" +
-                    "Password temporal: " + tempPassword + "\n\n" +
-                    "Debe verificar su email y cambiar su contraseña.");
-        } catch (Exception e) {
-            // Log error but don't fail the request
+        sendUserCredentialsEmail(user.getEmail(), username, tempPassword);
+
+        return toDTO(user);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public UserDTO updateUser(String id, Boolean isActive, Set<String> roles) {
+        UUID uuid = UUID.fromString(id);
+        User user = userRepository.findById(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (isActive != null) {
+            user.setIsActive(isActive);
         }
 
-        return ResponseEntity.ok(ApiResponse.success("Usuario creado", toUserDTO(user)));
+        if (roles != null && !roles.isEmpty()) {
+            user.getRoles().clear();
+            for (String roleName : roles) {
+                roleRepository.findByName(roleName).ifPresent(user.getRoles()::add);
+            }
+        }
+
+        user = userRepository.save(user);
+        return toDTO(user);
     }
 
-    @GetMapping("/registrations")
-    public ResponseEntity<ApiResponse<List<RegistrationRequestDTO>>> getRegistrationRequests() {
-        List<RegistrationRequestDTO> requests = registrationService.getAllRequests();
-        return ResponseEntity.ok(ApiResponse.success(requests));
-    }
-
-    @GetMapping("/registrations/pending")
-    public ResponseEntity<ApiResponse<List<RegistrationRequestDTO>>> getPendingRequests() {
-        List<RegistrationRequestDTO> requests = registrationService.getPendingRequests();
-        return ResponseEntity.ok(ApiResponse.success(requests));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable String id) {
+    @Transactional("postgresTransactionManager")
+    public void deleteUser(String id) {
         UUID uuid = UUID.fromString(id);
         User user = userRepository.findById(uuid)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
@@ -140,8 +148,42 @@ public class UserManagementController {
         user.setIsActive(false);
         user.setIsDeleted(true);
         userRepository.save(user);
+    }
 
-        return ResponseEntity.ok(ApiResponse.success("Usuario eliminado", null));
+    private void validateRolesAndCurp(CreateUserRequest request) {
+        List<String> roles = request.getRoles();
+        String curp = request.getCurp();
+
+        if (roles == null || roles.isEmpty()) {
+            return;
+        }
+
+        boolean anyRoleRequiresCurp = roles.stream().anyMatch(ROLES_REQUIRING_CURP::contains);
+        boolean anyRoleWithoutCurp = roles.stream().anyMatch(ROLES_WITHOUT_CURP::contains);
+
+        if (anyRoleRequiresCurp && anyRoleWithoutCurp) {
+            throw new IllegalStateException(
+                    "No se puede asignar roles que requieren CURP con roles que no lo requieren");
+        }
+
+        if (anyRoleRequiresCurp && (curp == null || curp.isEmpty())) {
+            throw new IllegalStateException(
+                    "El CURP es requerido para los roles: " + ROLES_REQUIRING_CURP);
+        }
+
+        if (anyRoleWithoutCurp && curp != null && !curp.isEmpty()) {
+            throw new IllegalStateException(
+                    "Los roles " + ROLES_WITHOUT_CURP + " no requieren CURP");
+        }
+
+        if (anyRoleRequiresCurp) {
+            boolean curpFound = studentRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(curp.toUpperCase()).isPresent() ||
+                           teacherRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(curp.toUpperCase()).isPresent();
+            if (!curpFound) {
+                throw new IllegalStateException(
+                        "El CURP no corresponde a un registro académico activo");
+            }
+        }
     }
 
     private String generateTempPassword() {
@@ -165,7 +207,19 @@ public class UserManagementController {
         return sanitized;
     }
 
-    private UserDTO toUserDTO(User user) {
+    private void sendUserCredentialsEmail(String email, String username, String password) {
+        try {
+            emailService.sendEmail(email, "Cuenta creada - Escuela Normal",
+                    "Su cuenta ha sido creada por el administrador.\n\n" +
+                    "Username: " + username + "\n" +
+                    "Password temporal: " + password + "\n\n" +
+                    "Debe verificar su email.");
+        } catch (Exception e) {
+            log.error("Error enviando email de credenciales", e);
+        }
+    }
+
+    private UserDTO toDTO(User user) {
         return UserDTO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -176,20 +230,5 @@ public class UserManagementController {
                 .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))
                 .createdAt(user.getCreatedAt())
                 .build();
-    }
-
-    @lombok.Data
-    @lombok.Builder
-    @lombok.NoArgsConstructor
-    @lombok.AllArgsConstructor
-    public static class UserDTO {
-        private UUID id;
-        private String username;
-        private String email;
-        private Boolean isActive;
-        private Boolean isVerified;
-        private Boolean mustVerifyEmail;
-        private Set<String> roles;
-        private LocalDateTime createdAt;
     }
 }
