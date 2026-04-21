@@ -29,13 +29,11 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 | POST | `/2fa/request-setup` | Solicitar setup 2FA | Sí |
 | POST | `/2fa/enable` | Habilitar 2FA | Sí |
 | POST | `/2fa/disable` | Deshabilitar 2FA | Sí |
-| POST | `/registration/init` | Iniciar registro público | No |
-| POST | `/registration/verify` | Verificar registro con OTP | No |
-| POST | `/registration/verify-email` | Verificar email | No |
-| GET | `/admin/users` | Listar usuarios | Sí (ADMIN) |
-| POST | `/admin/users` | Crear usuario | Sí (ADMIN) |
-| GET | `/admin/users/registrations` | Ver solicitudes de registro | Sí (ADMIN) |
-| GET | `/admin/users/registrations/pending` | Ver solicitudes pendientes | Sí (ADMIN) |
+| POST | `/register/init` | Iniciar registro público | No |
+| POST | `/register/verify` | Verificar registro con OTP | No |
+| POST | `/register/verify-email` | Verificar email | No |
+| POST | `/register/resend-email-otp` | Reenviar código email | No |
+| GET | `/register/status/{userId}` | Verificar estado del usuario | No |
 
 ---
 
@@ -988,3 +986,85 @@ El sistema envía email con username y password temporal al nuevo usuario.
 ### Paso 4: Usuario-Verificar Email (como arriba)
 
 ### Paso 5: Usuario-Login y Cambio de Contraseña (como arriba)
+
+---
+
+## CPANEL - Gestión de Usuarios (ADMIN)
+
+### Base URL: `/api/cpanel`
+
+### Endpoints
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/users` | Listar usuarios (paginados) | ADMIN |
+| GET | `/users/{id}` | Ver usuario específico | ADMIN |
+| POST | `/users` | Crear usuario | ADMIN |
+| PUT | `/users/{id}` | Editar usuario | ADMIN |
+| DELETE | `/users/{id}` | Eliminar usuario (soft delete) | ADMIN |
+
+### GET `/api/cpanel/users` - Listar Usuarios
+
+**Headers**:
+```
+Authorization: Bearer {{accessToken}}
+```
+
+**Query Parameters**:
+| Parámetro | Default | Descripción |
+|-----------|---------|-------------|
+| page | 0 | Número de página |
+| size | 20 | Tamaño por página |
+| sort | createdAt,desc | Ordenamiento |
+
+**Respuesta**:
+```json
+{
+    "success": true,
+    "data": {
+        "content": [...],
+        "totalElements": 45,
+        "totalPages": 3,
+        "size": 20,
+        "number": 0
+    }
+}
+```
+
+### POST `/api/cpanel/users` - Crear Usuario
+
+**Validación de CURP por Rol:**
+
+| Rol | Requiere CURP | Validación |
+|-----|-------------|------------|
+| STUDENT | Sí | Debe existir en `student` y estar activo |
+| TEACHER | Sí | Debe existir en `teacher` y estar activo |
+| ADMIN | No | Sin CURP |
+| CONTROL_ESCOLAR | No | Sin CURP |
+| DIRECTOR | No | Sin CURP |
+
+**Request Body (Crear ADMIN sin CURP)**:
+```json
+{
+    "email": "admin@enez.edu.mx",
+    "roles": ["ADMIN"]
+}
+```
+
+**Request Body (Crear STUDENT con CURP)**:
+```json
+{
+    "email": "estudiante@enez.edu.mx",
+    "curp": "XAXX010101HNEXXXX18",
+    "roles": ["STUDENT"]
+}
+```
+
+**Errores:**
+- CURP requerido: "El CURP es requerido para los roles: [STUDENT, TEACHER]"
+- CURP no existe: "El CURP no corresponde a un registro académico activo"
+- CURP no permitido: "Los roles [ADMIN, CONTROL_ESCOLAR, DIRECTOR] no requieren CURP"
+
+### DELETE `/api/cpanel/users/{id}` - Eliminar Usuario
+
+Realiza un soft delete (is_active = false, is_deleted = true).
