@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth/registration")
+@RequestMapping("/api/registration")
 @RequiredArgsConstructor
 public class RegistrationController {
 
