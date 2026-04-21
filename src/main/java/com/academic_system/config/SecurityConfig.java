@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/public/**",
+                                "/api/registration/**",
                                 "/api/server/health",
                                 "/api/portal/institution",
                                 "/api/portal/news",

@@ -111,7 +111,7 @@ public class RegistrationService {
         user.setMustVerifyEmail(true);
         user.setIsVerified(false);
         user.setIsActive(true);
-        user.setMustChangePassword(true);
+        user.setMustChangePassword(false);
 
         user = userRepository.save(user);
 

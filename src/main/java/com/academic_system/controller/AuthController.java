@@ -3,7 +3,6 @@ package com.academic_system.controller;
 import com.academic_system.dto.auth.*;
 import com.academic_system.service.AuthService;
 import com.academic_system.service.OtpService;
-import com.academic_system.service.UserRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +20,6 @@ public class AuthController {
 
     private final AuthService authService;
     private final OtpService otpService;
-    private final UserRegistrationService userRegistrationService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
@@ -90,35 +88,6 @@ public class AuthController {
         }
         
         return ResponseEntity.ok(authService.changePassword(request));
-    }
-
-    // === REGISTRATION ENDPOINTS ===
-
-    @PostMapping("/register")
-    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
-        // Validar tipo de registro
-        if (request.getType() == RegisterRequest.RegisterType.GENERAL) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Tipo de registro no válido para auto-registro"));
-        }
-        
-        userRegistrationService.register(request);
-        return ResponseEntity.ok(ApiResponse.success("Usuario registrado exitosamente. Puede iniciar sesión.", null));
-    }
-
-    // === ADMIN REGISTRATION (requires ADMIN role) ===
-
-    @PostMapping("/admin/register")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> registerByAdmin(
-            @RequestParam String username,
-            @RequestParam String email,
-            @RequestParam String temporaryPassword,
-            @RequestParam RegisterRequest.RegisterType type,
-            @RequestParam(required = false) String identifier) {
-        
-        userRegistrationService.createUserByAdmin(username, email, temporaryPassword, type, identifier);
-        return ResponseEntity.ok(ApiResponse.success("Usuario creado exitosamente. Debe cambiar su contraseña.", null));
     }
 
     // === 2FA ENDPOINTS con OTP propio ===
