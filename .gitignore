@@ -40,3 +40,5 @@ out/
 .env
 .env.local
 .env.*.local
+env_temp.bat
+env_temp.ps1
