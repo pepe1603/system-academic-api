@@ -56,6 +56,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/server/monitor").authenticated()
                         .requestMatchers("/api/portal/**").authenticated()
+                        .requestMatchers("/api/cpanel/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
