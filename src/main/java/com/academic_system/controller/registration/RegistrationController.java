@@ -43,4 +43,10 @@ public class RegistrationController {
         registrationService.resendEmailVerificationOtp(userId);
         return ResponseEntity.ok(ApiResponse.success("Código de verificación reenviado", null));
     }
+
+    @GetMapping("/status/{userId}")
+    public ResponseEntity<ApiResponse<UserStatusDTO>> getUserStatus(@PathVariable String userId) {
+        UserStatusDTO status = registrationService.getUserStatus(userId);
+        return ResponseEntity.ok(ApiResponse.success(status));
+    }
 }

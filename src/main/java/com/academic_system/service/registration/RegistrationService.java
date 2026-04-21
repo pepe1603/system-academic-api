@@ -220,6 +220,21 @@ public class RegistrationService {
                 .toList();
     }
 
+    public UserStatusDTO getUserStatus(String userId) {
+        UUID userUuid = UUID.fromString(userId);
+        User user = userRepository.findById(userUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        return UserStatusDTO.builder()
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .isActive(user.getIsActive())
+                .isVerified(user.getIsVerified())
+                .mustVerifyEmail(user.getMustVerifyEmail())
+                .mustChangePassword(user.getMustChangePassword())
+                .build();
+    }
+
     private String generateOtp() {
         return String.format("%06d", random.nextInt(999999));
     }
