@@ -245,6 +245,40 @@ public class RegistrationService {
         return sanitized;
     }
 
+    public void resendEmailVerificationOtp(String userId) {
+        UUID userUuid = UUID.fromString(userId);
+        
+        User user = userRepository.findById(userUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        if (Boolean.TRUE.equals(user.getIsVerified())) {
+            throw new IllegalStateException("El email ya está verificado");
+        }
+        
+        EmailVerification existing = emailVerificationRepository.findByUserIdAndIsVerifiedFalse(userUuid)
+                .orElse(null);
+        
+        if (existing != null) {
+            emailVerificationRepository.delete(existing);
+        }
+        
+        String newOtp = generateOtp();
+        EmailVerification newVerif = EmailVerification.builder()
+                .userId(user.getId())
+                .verificationCode(newOtp)
+                .expiresAt(LocalDateTime.now().plusMinutes(30))
+                .isVerified(false)
+                .build();
+        emailVerificationRepository.save(newVerif);
+        
+        try {
+            emailService.sendEmail(user.getEmail(), "Código de verificación - Reenvío",
+                    "Su código de verificación es: " + newOtp + "\n\nEste código expira en 30 minutos.");
+        } catch (Exception e) {
+            log.error("Error enviando email de verificación", e);
+        }
+    }
+
     private RegistrationRequestDTO toDTO(RegistrationRequest req, Student student, Teacher teacher) {
         return RegistrationRequestDTO.builder()
                 .id(req.getId())

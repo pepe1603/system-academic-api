@@ -36,4 +36,11 @@ public class RegistrationController {
         registrationService.verifyEmail(userId, code);
         return ResponseEntity.ok(ApiResponse.success("Email verificado", null));
     }
+
+    @PostMapping("/resend-email-otp")
+    public ResponseEntity<ApiResponse<Void>> resendEmailVerificationOtp(
+            @RequestParam String userId) {
+        registrationService.resendEmailVerificationOtp(userId);
+        return ResponseEntity.ok(ApiResponse.success("Código de verificación reenviado", null));
+    }
 }
