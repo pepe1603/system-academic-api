@@ -76,18 +76,17 @@ public class UserManagementController {
             }
         }
 
-        User user = User.builder()
-                .username(username)
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(tempPassword))
-                .tempPassword(tempPassword)
-                .mustVerifyEmail(true)
-                .isVerified(false)
-                .isActive(true)
-                .mustChangePassword(true)
-                .build();
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(tempPassword));
+        user.setTempPassword(tempPassword);
+        user.setMustVerifyEmail(true);
+        user.setIsVerified(false);
+        user.setIsActive(true);
+        user.setMustChangePassword(true);
 
-        Set<Role> userRoles = user.getRoles();
+        Set<Role> userRoles = new java.util.HashSet<>();
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
             final Set<Role> roles = userRoles;
             for (String roleName : request.getRoles()) {

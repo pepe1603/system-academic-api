@@ -103,24 +103,23 @@ public class RegistrationService {
         String tempPassword = generateTempPassword();
         String username = generateUsername(regRequest.getEmail());
 
-        User user = User.builder()
-                .username(username)
-                .email(regRequest.getEmail())
-                .passwordHash(passwordEncoder.encode(tempPassword))
-                .tempPassword(tempPassword)
-                .mustVerifyEmail(true)
-                .isVerified(false)
-                .isActive(true)
-                .mustChangePassword(true)
-                .build();
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(regRequest.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(tempPassword));
+        user.setTempPassword(tempPassword);
+        user.setMustVerifyEmail(true);
+        user.setIsVerified(false);
+        user.setIsActive(true);
+        user.setMustChangePassword(true);
 
         user = userRepository.save(user);
 
         Role studentRole = roleRepository.findByName("STUDENT").orElse(null);
         if (studentRole != null) {
             user.getRoles().add(studentRole);
-            user = userRepository.save(user);
         }
+        user = userRepository.save(user);
 
         Student student = null;
         Teacher teacher = null;
