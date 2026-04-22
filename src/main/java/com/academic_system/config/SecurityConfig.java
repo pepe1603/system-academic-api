@@ -43,7 +43,6 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/public/**",
-                                "/api/registration/**",
                                 "/api/server/health",
                                 "/api/portal/institution",
                                 "/api/portal/news",
@@ -56,7 +55,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/server/monitor").authenticated()
                         .requestMatchers("/api/portal/**").authenticated()
-                        .requestMatchers("/api/cpanel/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
