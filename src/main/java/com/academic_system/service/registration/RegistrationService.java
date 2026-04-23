@@ -24,6 +24,7 @@ public class RegistrationService {
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final EmailVerificationRepository emailVerificationRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
@@ -102,74 +103,95 @@ public class RegistrationService {
         String tempPassword = generateTempPassword();
         String username = generateUsername(regRequest.getEmail());
 
-        User user = new User();
-        user.setUsername(username);
-        user.setEmail(regRequest.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(tempPassword));
-        user.setTempPassword(tempPassword);
-        user.setIsVerified(false);
-        user.setIsActive(true);
-        user.setMustChangePassword(false);
+        User user = User.builder()
+                .username(username)
+                .email(regRequest.getEmail())
+                .passwordHash(passwordEncoder.encode(tempPassword))
+                .tempPassword(tempPassword)
+                .mustVerifyEmail(true)
+                .isVerified(false)
+                .isActive(true)
+                .mustChangePassword(true)
+                .build();
 
         user = userRepository.save(user);
 
-        Set<Role> roles = new HashSet<>();
-        if (regRequest.getStudentId() != null) {
-            Role studentRole = roleRepository.findByName("STUDENT").orElse(null);
-            if (studentRole != null) {
-                roles.add(studentRole);
-            }
-            Role teacherRole = roleRepository.findByName("TEACHER").orElse(null);
-            if (teacherRole != null && roles.size() < 2) {
-                roles.add(teacherRole);
-            }
-            user.setRoles(roles);
+        Role studentRole = roleRepository.findByName("STUDENT").orElse(null);
+        if (studentRole != null) {
+            user.getRoles().add(studentRole);
             user = userRepository.save(user);
+        }
 
-            Student student = studentRepository.findById(regRequest.getStudentId()).orElse(null);
+        Student student = null;
+        Teacher teacher = null;
+
+        if (regRequest.getStudentId() != null) {
+            student = studentRepository.findById(regRequest.getStudentId()).orElse(null);
             if (student != null) {
                 student.setUserId(user.getId());
-                studentRepository.save(student);
+                student = studentRepository.save(student);
             }
         } else if (regRequest.getTeacherId() != null) {
-            Role teacherRole = roleRepository.findByName("TEACHER").orElse(null);
-            if (teacherRole != null) {
-                roles.add(teacherRole);
-            }
-            Role studentRole = roleRepository.findByName("STUDENT").orElse(null);
-            if (studentRole != null && roles.size() < 2) {
-                roles.add(studentRole);
-            }
-            user.setRoles(roles);
-            user = userRepository.save(user);
-
-            Teacher teacher = teacherRepository.findById(regRequest.getTeacherId()).orElse(null);
+            teacher = teacherRepository.findById(regRequest.getTeacherId()).orElse(null);
             if (teacher != null) {
                 teacher.setUserId(user.getId());
-                teacherRepository.save(teacher);
+                teacher = teacherRepository.save(teacher);
             }
         }
+
+        String emailOtp = generateOtp();
+        EmailVerification emailVerif = EmailVerification.builder()
+                .userId(user.getId())
+                .verificationCode(emailOtp)
+                .expiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
+                .isVerified(false)
+                .build();
+        emailVerificationRepository.save(emailVerif);
 
         regRequest.setStatus(RegistrationRequest.RegistrationStatus.APPROVED);
         regRequest.setProcessedAt(LocalDateTime.now());
         registrationRequestRepository.save(regRequest);
 
-        Student student = regRequest.getStudentId() != null ? 
-                studentRepository.findById(regRequest.getStudentId()).orElse(null) : null;
-        Teacher teacher = regRequest.getTeacherId() != null ? 
-                teacherRepository.findById(regRequest.getTeacherId()).orElse(null) : null;
-
         try {
-            emailService.sendEmail(user.getEmail(), "Cuenta creada - Escuela Normal",
-                    "Su cuenta ha sido creada y activada.\n\n" +
+            emailService.sendEmail(user.getEmail(), "Cuenta creada - Verificación de email",
+                    "Su cuenta ha sido creada.\n\n" +
                     "Username: " + username + "\n" +
                     "Password temporal: " + tempPassword + "\n\n" +
-                    "Puede iniciar sesión.");
+                    "Debe verificar su email antes de iniciar sesión.\n" +
+                    "Código de verificación: " + emailOtp);
         } catch (Exception e) {
-            log.error("Error enviando email de credenciales", e);
+            log.error("Error enviando email de verificación de cuenta", e);
         }
 
         return toDTO(regRequest, student, teacher);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public void verifyEmail(String userId, String code) {
+        UUID userUuid = UUID.fromString(userId);
+        
+        User user = userRepository.findById(userUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        EmailVerification emailVerif = emailVerificationRepository.findByUserIdAndIsVerifiedFalse(userUuid)
+                .orElseThrow(() -> new IllegalArgumentException("No hay verificación pendiente"));
+
+        if (LocalDateTime.now().isAfter(emailVerif.getExpiresAt())) {
+            throw new IllegalStateException("El código ha expirado");
+        }
+
+        if (!emailVerif.getVerificationCode().equals(code)) {
+            throw new IllegalArgumentException("Código incorrecto");
+        }
+
+        emailVerif.setIsVerified(true);
+        emailVerif.setVerifiedAt(LocalDateTime.now());
+        emailVerificationRepository.save(emailVerif);
+
+        user.setIsVerified(true);
+        user.setVerifiedAt(LocalDateTime.now());
+        user.setMustVerifyEmail(false);
+        userRepository.save(user);
     }
 
     public List<RegistrationRequestDTO> getPendingRequests() {
@@ -196,20 +218,6 @@ public class RegistrationService {
                     return toDTO(req, student, teacher);
                 })
                 .toList();
-    }
-
-    public UserStatusDTO getUserStatus(String userId) {
-        UUID userUuid = UUID.fromString(userId);
-        User user = userRepository.findById(userUuid)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-        
-        return UserStatusDTO.builder()
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .isActive(user.getIsActive())
-                .isVerified(user.getIsVerified())
-                .mustChangePassword(user.getMustChangePassword())
-                .build();
     }
 
     private String generateOtp() {

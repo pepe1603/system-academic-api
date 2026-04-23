@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth/register")
+@RequestMapping("/api/registration")
 @RequiredArgsConstructor
 public class RegistrationController {
 
@@ -29,9 +29,11 @@ public class RegistrationController {
         return ResponseEntity.ok(ApiResponse.success("Registro completado", result));
     }
 
-    @GetMapping("/status/{userId}")
-    public ResponseEntity<ApiResponse<UserStatusDTO>> getUserStatus(@PathVariable String userId) {
-        UserStatusDTO status = registrationService.getUserStatus(userId);
-        return ResponseEntity.ok(ApiResponse.success(status));
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(
+            @RequestParam String userId,
+            @RequestParam String code) {
+        registrationService.verifyEmail(userId, code);
+        return ResponseEntity.ok(ApiResponse.success("Email verificado", null));
     }
 }
