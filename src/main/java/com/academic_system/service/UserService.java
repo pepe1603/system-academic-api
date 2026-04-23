@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +38,8 @@ public class UserService {
 
     private static final Set<String> ROLES_REQUIRING_CURP = Set.of("STUDENT", "TEACHER");
     private static final Set<String> ROLES_WITHOUT_CURP = Set.of("ADMIN", "CONTROL_ESCOLAR", "DIRECTOR");
+    private static final int MAX_ROLES_WITH_CURP = 2;
+    private static final int MAX_ROLES_WITHOUT_CURP = 1;
 
     public Page<UserDTO> getAllUsers(Pageable pageable) {
         Page<User> page = userRepository.findAll(pageable);
@@ -58,7 +59,8 @@ public class UserService {
             throw new IllegalStateException("El email ya está registrado");
         }
 
-        validateRolesAndCurp(request);
+        boolean hasCurp = request.getCurp() != null && !request.getCurp().isEmpty();
+        validateRolesAndCurp(request, hasCurp);
 
         String tempPassword = generateTempPassword();
         String username = generateUsername(request.getEmail());
@@ -68,7 +70,7 @@ public class UserService {
         Student student = null;
         Teacher teacher = null;
 
-        if (request.getCurp() != null && !request.getCurp().isEmpty()) {
+        if (hasCurp) {
             student = studentRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(request.getCurp().toUpperCase())
                     .orElse(null);
             if (student == null) {
@@ -87,16 +89,25 @@ public class UserService {
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(tempPassword));
         user.setTempPassword(tempPassword);
-        user.setMustVerifyEmail(true);
         user.setIsVerified(false);
         user.setIsActive(true);
         user.setMustChangePassword(true);
 
         Set<Role> userRoles = new HashSet<>();
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            int maxRoles = hasCurp ? MAX_ROLES_WITH_CURP : MAX_ROLES_WITHOUT_CURP;
             for (String roleName : request.getRoles()) {
-                roleRepository.findByName(roleName).ifPresent(userRoles::add);
+                if (userRoles.size() >= maxRoles) {
+                    break;
+                }
+                roleRepository.findByName(roleName).ifPresent(role -> {
+                    if (!userRoles.contains(role)) {
+                        userRoles.add(role);
+                    }
+                });
             }
+        } else if (hasCurp) {
+            roleRepository.findByName("STUDENT").ifPresent(userRoles::add);
         } else {
             roleRepository.findByName("STUDENT").ifPresent(userRoles::add);
         }
@@ -118,13 +129,17 @@ public class UserService {
     }
 
     @Transactional("postgresTransactionManager")
-    public UserDTO updateUser(String id, Boolean isActive, Set<String> roles) {
+    public UserDTO updateUser(String id, Boolean isActive, Set<String> roles, Boolean mustChangePassword) {
         UUID uuid = UUID.fromString(id);
         User user = userRepository.findById(uuid)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         if (isActive != null) {
             user.setIsActive(isActive);
+        }
+
+        if (mustChangePassword != null) {
+            user.setMustChangePassword(mustChangePassword);
         }
 
         if (roles != null && !roles.isEmpty()) {
@@ -149,12 +164,23 @@ public class UserService {
         userRepository.save(user);
     }
 
-    private void validateRolesAndCurp(CreateUserRequest request) {
+    private void validateRolesAndCurp(CreateUserRequest request, boolean hasCurp) {
         List<String> roles = request.getRoles();
-        String curp = request.getCurp();
 
         if (roles == null || roles.isEmpty()) {
             return;
+        }
+
+        if (hasCurp) {
+            if (roles.size() > MAX_ROLES_WITH_CURP) {
+                throw new IllegalStateException(
+                        "Los usuarios con registro académico pueden tener máximo " + MAX_ROLES_WITH_CURP + " roles");
+            }
+        } else {
+            if (roles.size() > MAX_ROLES_WITHOUT_CURP) {
+                throw new IllegalStateException(
+                        "Los usuarios del sistema pueden tener máximo " + MAX_ROLES_WITHOUT_CURP + " rol");
+            }
         }
 
         boolean anyRoleRequiresCurp = roles.stream().anyMatch(ROLES_REQUIRING_CURP::contains);
@@ -165,17 +191,18 @@ public class UserService {
                     "No se puede asignar roles que requieren CURP con roles que no lo requieren");
         }
 
-        if (anyRoleRequiresCurp && (curp == null || curp.isEmpty())) {
+        if (anyRoleRequiresCurp && !hasCurp) {
             throw new IllegalStateException(
                     "El CURP es requerido para los roles: " + ROLES_REQUIRING_CURP);
         }
 
-        if (anyRoleWithoutCurp && curp != null && !curp.isEmpty()) {
+        if (anyRoleWithoutCurp && hasCurp) {
             throw new IllegalStateException(
                     "Los roles " + ROLES_WITHOUT_CURP + " no requieren CURP");
         }
 
-        if (anyRoleRequiresCurp) {
+        if (anyRoleRequiresCurp && hasCurp) {
+            String curp = request.getCurp();
             boolean curpFound = studentRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(curp.toUpperCase()).isPresent() ||
                            teacherRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(curp.toUpperCase()).isPresent();
             if (!curpFound) {
@@ -212,7 +239,7 @@ public class UserService {
                     "Su cuenta ha sido creada por el administrador.\n\n" +
                     "Username: " + username + "\n" +
                     "Password temporal: " + password + "\n\n" +
-                    "Debe verificar su email.");
+                    "Debe cambiar su contraseña en el primer inicio de sesión.");
         } catch (Exception e) {
             log.error("Error enviando email de credenciales", e);
         }
@@ -225,7 +252,7 @@ public class UserService {
                 .email(user.getEmail())
                 .isActive(user.getIsActive())
                 .isVerified(user.getIsVerified())
-                .mustVerifyEmail(user.getMustVerifyEmail())
+                .mustChangePassword(user.getMustChangePassword())
                 .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))
                 .createdAt(user.getCreatedAt())
                 .build();

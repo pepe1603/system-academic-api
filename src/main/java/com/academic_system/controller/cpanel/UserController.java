@@ -44,7 +44,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserDTO>> updateUser(
             @PathVariable String id,
             @RequestBody UpdateUserRequest request) {
-        UserDTO user = userService.updateUser(id, request.getIsActive(), request.getRoles());
+        UserDTO user = userService.updateUser(id, request.getIsActive(), request.getRoles(), request.getMustChangePassword());
         return ResponseEntity.ok(ApiResponse.success("Usuario actualizado", user));
     }
 
@@ -60,5 +60,6 @@ public class UserController {
     public static class UpdateUserRequest {
         private Boolean isActive;
         private Set<String> roles;
+        private Boolean mustChangePassword;
     }
 }

@@ -19,7 +19,7 @@ public class UserDTO {
     private String email;
     private Boolean isActive;
     private Boolean isVerified;
-    private Boolean mustVerifyEmail;
+    private Boolean mustChangePassword;
     private Set<String> roles;
     private LocalDateTime createdAt;
 }

@@ -29,21 +29,6 @@ public class RegistrationController {
         return ResponseEntity.ok(ApiResponse.success("Registro completado", result));
     }
 
-    @PostMapping("/verify-email")
-    public ResponseEntity<ApiResponse<Void>> verifyEmail(
-            @RequestParam String userId,
-            @RequestParam String code) {
-        registrationService.verifyEmail(userId, code);
-        return ResponseEntity.ok(ApiResponse.success("Email verificado", null));
-    }
-
-    @PostMapping("/resend-email-otp")
-    public ResponseEntity<ApiResponse<Void>> resendEmailVerificationOtp(
-            @RequestParam String userId) {
-        registrationService.resendEmailVerificationOtp(userId);
-        return ResponseEntity.ok(ApiResponse.success("Código de verificación reenviado", null));
-    }
-
     @GetMapping("/status/{userId}")
     public ResponseEntity<ApiResponse<UserStatusDTO>> getUserStatus(@PathVariable String userId) {
         UserStatusDTO status = registrationService.getUserStatus(userId);
