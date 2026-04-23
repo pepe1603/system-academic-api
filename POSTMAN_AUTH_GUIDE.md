@@ -1,21 +1,22 @@
-# Guía de Testing - Módulo de Autenticación
+# Guía de Testing - Módulo de Autenticación y Usuarios
 
-Guía para probar los endpoints del módulo de autenticación usando **Postman**.
+Guía para probar los endpoints del sistema.
 
-## Información General
+## Tabla de Contenidos
 
-- **Base URL**: `http://localhost:8080/api/auth`
-- **Content-Type**: `application/json`
-- **Branch**: `feature/auth-module`
+1. [Auth Endpoints](#auth-endpoints)
+2. [Registration Endpoints](#registration-endpoints)
+3. [User Management Endpoints](#user-management-endpoints)
+4. [Flujos Completos](#flujos-completos)
 
 ---
 
-## Tabla de Endpoints
+## Auth Endpoints
 
-| Método | Endpoint | Descripción | Auth Requerida |
-|--------|----------|-------------|----------------|
-| GET | `/health` | Verificar estado del servidor (simple) | No |
-| GET | `/monitor` | Verificar estado con detalles de servicios | Sí |
+**Base URL**: `http://localhost:8080/api/auth`
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
 | POST | `/login` | Inicio de sesión | No |
 | POST | `/verify-2fa` | Verificar código 2FA | No |
 | POST | `/refresh` | Renovar token | No |
@@ -24,991 +25,137 @@ Guía para probar los endpoints del módulo de autenticación usando **Postman**
 | POST | `/verify-otp` | Verificar código OTP | No |
 | POST | `/reset-password` | Restablecer contraseña | No |
 | POST | `/change-password` | Cambiar contraseña | Sí |
-| POST | `/register` | Registro de usuario | No |
-| POST | `/admin/register` | Registro por administrador | Sí (ADMIN) |
 | POST | `/2fa/request-setup` | Solicitar setup 2FA | Sí |
 | POST | `/2fa/enable` | Habilitar 2FA | Sí |
 | POST | `/2fa/disable` | Deshabilitar 2FA | Sí |
-| POST | `/register/init` | Iniciar registro público | No |
-| POST | `/register/verify` | Verificar registro con OTP | No |
-| POST | `/register/verify-email` | Verificar email | No |
-| POST | `/register/resend-email-otp` | Reenviar código email | No |
-| GET | `/register/status/{userId}` | Verificar estado del usuario | No |
-
----
-
-## 1. Verificar Estado del Servidor
-
-### GET `/api/health` (Sin Auth)
-
-**Descripción**: Verifica que el servidor esté funcionando. Endpoint público sin autenticación.
-
-**Request**: No requiere body ni headers.
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "status": "UP",
-    "timestamp": "2026-04-05T14:30:00Z"
-}
-```
-
----
-
-### GET `/api/monitor` (Con Auth)
-
-**Descripción**: Verifica el estado del servidor y sus servicios (DB, Redis). Requiere autenticación.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{accessToken}}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "status": "UP",
-    "timestamp": "2026-04-05T14:30:00Z",
-    "services": {
-        "database": "UP",
-        "redis": "UP"
-    }
-}
-```
-
-**Respuesta Degradada (503)** - Cuando algún servicio está caído:
-```json
-{
-    "status": "DEGRADED",
-    "timestamp": "2026-04-05T14:30:00Z",
-    "services": {
-        "database": "UP",
-        "redis": "DOWN"
-    }
-}
-```
-
----
-
-## 2. Login
 
 ### POST `/api/auth/login`
 
-**Descripción**: Autentica un usuario y retorna tokens de acceso.
-
-**Request Body**:
 ```json
 {
-    "username": "string",
-    "password": "string"
+    "username": "admin",
+    "password": "admin123"
 }
 ```
 
-**Respuesta Exitosa (200)**:
+**Respuesta exitosa:**
 ```json
 {
     "success": true,
     "message": "Login exitoso",
     "data": {
         "userId": "uuid",
-        "username": "string",
-        "email": "string",
-        "roles": ["ROLE_USER", "ROLE_STUDENT"],
-        "permissions": ["READ", "WRITE"],
-        "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-        "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+        "username": "admin",
+        "email": "admin@enez.edu.mx",
+        "roles": ["ADMIN"],
+        "accessToken": "eyJhbG...",
+        "refreshToken": "eyJhbG...",
         "expiresIn": 3600,
-        "requiresTwoFactor": false,
-        "tempToken": null,
-        "message": "Login exitoso"
-    }
-}
-```
-
-**Respuesta con 2FA Habilitado (200)**:
-```json
-{
-    "success": true,
-    "message": "Verificación 2FA requerida",
-    "data": {
-        "requiresTwoFactor": true,
-        "tempToken": "temporal_token_para_verificacion",
-        "message": "Ingrese el código de verificación"
-    }
-}
-```
-
-**Configuración en Postman**:
-1. Método: `POST`
-2. URL: `{{baseUrl}}/login`
-3. Body: `raw` → `JSON`
-
----
-
-## 3. Verificar 2FA
-
-### POST `/api/auth/verify-2fa`
-
-**Descripción**: Verifica el código OTP para completar el login.
-
-**Request Body**:
-```json
-{
-    "tempToken": "temporal_token_recibido_en_login",
-    "code": "123456",
-    "backupCode": null
-}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Verificación exitosa",
-    "data": {
-        "userId": "uuid",
-        "username": "string",
-        "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-        "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
-        "roles": ["ROLE_USER"],
-        "permissions": ["READ"]
+        "requiresTwoFactor": false
     }
 }
 ```
 
 ---
 
-## 4. Refrescar Token
+## Registration Endpoints
 
-### POST `/api/auth/refresh`
+**Base URL**: `http://localhost:8080/api/auth/register`
 
-**Descripción**: Renueva el token de acceso usando el refresh token.
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| POST | `/init` | Iniciar registro público | No |
+| POST | `/verify` | Verificar registro con OTP | No |
+| POST | `/verify-email` | Verificar email (opcional) | No |
+| POST | `/resend-email-otp` | Reenviar código email | No |
+| GET | `/status/{userId}` | Ver estado del usuario | No |
 
-**Request Body**:
-```json
-{
-    "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
-}
-```
+### POST `/api/auth/register/init` - Iniciar Registro
 
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Token renovado exitosamente",
-    "data": "nuevo_access_token"
-}
-```
-
----
-
-## 5. Logout
-
-### POST `/api/auth/logout`
-
-**Descripción**: Invalida la sesión actual.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{accessToken}}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Sesión cerrada exitosamente",
-    "data": null
-}
-```
-
----
-
-## 6. Recuperación de Contraseña (Flujo de 3 Pasos)
-
-### Paso 1: Solicitar Código OTP
-
-#### POST `/api/auth/recovery`
-
-**Descripción**: Envía un código OTP de 6 dígitos al email del usuario.
-
-**Request Body**:
-```json
-{
-    "email": "usuario@example.com"
-}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Si el email existe, se enviará un código de recuperación",
-    "data": null
-}
-```
-
----
-
-### Paso 2: Verificar Código OTP
-
-#### POST `/api/auth/verify-otp`
-
-**Descripción**: Verifica el código OTP recibido. Si es válido, permite continuar al siguiente paso.
-
-**Request Body**:
-```json
-{
-    "email": "usuario@example.com",
-    "code": "123456",
-    "purpose": "PASSWORD_RECOVERY"
-}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Código verificado correctamente",
-    "data": null
-}
-```
-
-**Error - Código Inválido (400)**:
-```json
-{
-    "success": false,
-    "message": "Código inválido. Intentos restantes: 5",
-    "data": null
-}
-```
-
-**Error - Cuenta Bloqueada (429)**:
-```json
-{
-    "success": false,
-    "message": "Cuenta bloqueada por demasiados intentos fallidos. Intenta en 15 minutos",
-    "data": null
-}
-```
-
----
-
-### Paso 3: Restablecer Contraseña
-
-#### POST `/api/auth/reset-password`
-
-**Descripción**: Restablece la contraseña después de verificar el código OTP.
-
-**Request Body**:
-```json
-{
-    "email": "usuario@example.com",
-    "token": "123456",
-    "newPassword": "nuevaContraseña123"
-}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Contraseña restablecida exitosamente",
-    "data": null
-}
-```
-
-**Notas**:
-- El código OTP expira en 5 minutos (configurable).
-- Máximo 6 intentos fallidos antes de bloquear por 15 minutos.
-- Al solicitar un nuevo código, el anterior se invalida y los intentos se reinician.
-- El bloqueo es automático y se libera después del tiempo configurado.
-
----
-
-## 9. Cambiar Contraseña (Usuario Logueado)
-
-### POST `/api/auth/change-password`
-
-**Descripción**: Cambia la contraseña de un usuario autenticado.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{accessToken}}
-```
-
-**Request Body**:
-```json
-{
-    "currentPassword": "contraseñaActual123",
-    "newPassword": "nuevaContraseña456",
-    "confirmPassword": "nuevaContraseña456"
-}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Contraseña actualizada exitosamente",
-    "data": null
-}
-```
-
-**Error (400)** - Contraseñas no coinciden:
-```json
-{
-    "success": false,
-    "message": "Las contraseñas no coinciden",
-    "data": null
-}
-```
-
----
-
-## 10. Registro de Usuario
-
-### POST `/api/auth/register`
-
-**Descripción**: Permite auto-registro como estudiante o profesor.
-
-**Request Body (Estudiante)**:
-```json
-{
-    "username": "nuevoUsuario",
-    "email": "nuevo@example.com",
-    "password": "password123",
-    "confirmPassword": "password123",
-    "type": "STUDENT",
-    "curp": "XAXX010101HNEXXXX18",
-    "enrollmentNumber": "2021001234"
-}
-```
-
-**Request Body (Profesor)**:
-```json
-{
-    "username": "nuevoProfesor",
-    "email": "profesor@example.com",
-    "password": "password123",
-    "confirmPassword": "password123",
-    "type": "TEACHER",
-    "rfc": "XAXX010101XXX",
-    "employeeNumber": "EMP001234"
-}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Usuario registrado exitosamente. Puede iniciar sesión.",
-    "data": null
-}
-```
-
-**Nota**: El tipo `GENERAL` no es válido para auto-registro (retorna error 400).
-
----
-
-## 11. Registro por Administrador
-
-### POST `/api/auth/admin/register`
-
-**Descripción**: Permite a un ADMIN crear usuarios directamente.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{adminAccessToken}}
-```
-
-**Parámetros de Query**:
-| Parámetro | Tipo | Requerido | Descripción |
-|------------|------|-----------|-------------|
-| username | string | Sí | Nombre de usuario |
-| email | string | Sí | Email del usuario |
-| temporaryPassword | string | Sí | Contraseña temporal |
-| type | enum | Sí | STUDENT, TEACHER, GENERAL |
-| identifier | string | No | CURP (estudiante) o RFC (profesor) |
-
-**Ejemplo de Request**:
-```
-POST {{baseUrl}}/admin/register?username=adminuser&email=admin@edu.com&temporaryPassword=temp123456&type=GENERAL
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Usuario creado exitosamente. Debe cambiar su contraseña.",
-    "data": null
-}
-```
-
----
-
-## 12. Solicitar Setup de 2FA
-
-### POST `/api/auth/2fa/request-setup`
-
-**Descripción**: Genera el secreto y códigos de backup para configurar 2FA.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{accessToken}}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Configuración 2FA iniciada",
-    "data": {
-        "secret": "BASE32SECRET123",
-        "backupCodes": ["ABC123", "DEF456", "GHI789"],
-        "qrCodeUrl": "otpauth://totp/AcademicSystem:usuario?secret=BASE32SECRET123&issuer=AcademicSystem"
-    }
-}
-```
-
----
-
-## 13. Habilitar 2FA
-
-### POST `/api/auth/2fa/enable`
-
-**Descripción**: Activa el 2FA después de verificar el código.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{accessToken}}
-```
-
-**Parámetros de Query**:
-| Parámetro | Tipo | Requerido | Descripción |
-|------------|------|-----------|-------------|
-| code | string | Sí | Código OTP de 6 dígitos |
-
-**Ejemplo**:
-```
-POST {{baseUrl}}/2fa/enable?code=123456
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "2FA habilitado exitosamente",
-    "data": null
-}
-```
-
----
-
-## 14. Deshabilitar 2FA
-
-### POST `/api/auth/2fa/disable`
-
-**Descripción**: Desactiva el 2FA (requiere password actual).
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{accessToken}}
-```
-
-**Parámetros de Query**:
-| Parámetro | Tipo | Requerido | Descripción |
-|------------|------|-----------|-------------|
-| password | string | Sí | Contraseña actual del usuario |
-
-**Ejemplo**:
-```
-POST {{baseUrl}}/2fa/disable?password=miPassword123
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "2FA deshabilitado exitosamente",
-    "data": null
-}
-```
-
----
-
-## Colección Postman - Variables
-
-### Environment Variables Recomendadas
+**Descripción**: Requiere CURP válido en student o teacher.
 
 ```json
 {
-    "id": "academic-api",
-    "name": "Academic API",
-    "values": [
-        {
-            "key": "baseUrl",
-            "value": "http://localhost:8080/api/auth",
-            "enabled": true
-        },
-        {
-            "key": "accessToken",
-            "value": "",
-            "enabled": true
-        },
-        {
-            "key": "refreshToken",
-            "value": "",
-            "enabled": true
-        },
-        {
-            "key": "tempToken",
-            "value": "",
-            "enabled": true
-        }
-    ]
+    "curp": "XAXX010101HNEXXRA18",
+    "email": "estudiante@enez.edu.mx"
 }
 ```
 
-### Scripts de Tests para Auto-actualizar Tokens
-
-**Login - Post-Response Script**:
-```javascript
-if (pm.response.code === 200 && pm.response.json().data.accessToken) {
-    pm.collectionVariables.set("accessToken", pm.response.json().data.accessToken);
-    pm.collectionVariables.set("refreshToken", pm.response.json().data.refreshToken);
-    
-    if (pm.response.json().data.tempToken) {
-        pm.collectionVariables.set("tempToken", pm.response.json().data.tempToken);
-    }
-}
-```
-
-**Refresh Token - Pre-Request Script**:
-```javascript
-// No se requiere script adicional, solo pasar el refresh token en el body
-```
-
----
-
-## Flujo Completo de Testing
-
-### Flujo 1: Login Simple (sin 2FA)
-
-1. **POST** `/login` → Guardar `accessToken`
-2. **POST** `/refresh` → Renovar token
-3. **POST** `/logout` → Cerrar sesión
-
-### Flujo 2: Login con 2FA
-
-1. **POST** `/login` → Obtener `tempToken`
-2. **POST** `/verify-2fa` → Completar verificación → Guardar `accessToken`
-3. **POST** `/2fa/request-setup` → Obtener secretos
-4. **POST** `/2fa/enable?code=XXXXXX` → Habilitar 2FA
-5. **POST** `/logout`
-
-### Flujo 3: Recuperación de Contraseña (3 Pasos)
-
-1. **POST** `/recovery` → Solicitar código OTP
-2. **POST** `/verify-otp` → Verificar código OTP
-3. **POST** `/reset-password` → Establecer nueva contraseña
-
-**Notas del flujo**:
-- Código OTP: 6 dígitos, expira en 5 minutos
-- Máximo 6 intentos fallidos → bloqueo por 15 minutos
-- Cada solicitud de código nuevo invalida el anterior y reinicia los intentos
-
-### Flujo 4: Registro y Cambio de Contraseña
-
-1. **POST** `/register` → Registrar estudiante/profesor
-2. **POST** `/login` → Login con nuevas credenciales
-3. **POST** `/change-password` → Cambiar contraseña
-4. **POST** `/logout`
-
-### Flujo 5: Admin - Crear Usuarios
-
-1. **POST** `/login` → Admin hace login
-2. **POST** `/admin/register` → Crear nuevo usuario
-3. **POST** `/logout`
-
----
-
-## Códigos de Respuesta HTTP
-
-| Código | Descripción |
-|--------|-------------|
-| 200 | Éxito |
-| 400 | Solicitud inválida (validación fallida) |
-| 401 | No autenticado / Token inválido |
-| 403 | Sin permisos (ej: rol requerido) |
-| 404 | Recurso no encontrado |
-| 429 | Rate limit excedido |
-
----
-
-## Notas Importantes
-
-1. **Rate Limiting**: El API usa Redis para rate limiting. Si recibe 429, espere antes de reintentar.
-2. **Refresh Tokens**: Los refresh tokens tienen mayor duración. Use `/refresh` antes de que expire el access token.
-3. **2FA Backup Codes**: Guarde los códigos de backup en un lugar seguro al configurar 2FA.
-4. **Tokens en Headers**: Para endpoints protegidos, use: `Authorization: Bearer {{accessToken}}`
-
----
-
-## Errores Comunes
-
-### Error 401 - Token Expirado
-```json
-{
-    "success": false,
-    "message": "Token ha expirado",
-    "data": null
-}
-```
-**Solución**: Use `/refresh` con el refresh token para obtener uno nuevo.
-
-### Error 400 - Validación
-```json
-{
-    "success": false,
-    "message": "El username es requerido",
-    "data": null
-}
-```
-**Solución**: Revise el body de la request y asegúrese de enviar todos los campos requeridos.
-
-### Error 403 - Sin Permisos
-```json
-{
-    "success": false,
-    "message": "Acceso denegado",
-    "data": null
-}
-```
-**Solución**: El endpoint requiere rol ADMIN. Asegúrese de usar un token de administrador.
-
----
-
-## 15. Registro Público (Nuevo Flujo)
-
-### POST `/api/registration/init`
-
-**Descripción**: Inicia el proceso de registro público. Requiere CURP válido en el sistema académico.
-
-**Request Body**:
-```json
-{
-    "curp": "XAXX010101HNEXXXX18",
-    "email": "usuario@email.com"
-}
-```
-
-**Respuesta Exitosa (200)**:
+**Respuesta:**
 ```json
 {
     "success": true,
     "message": "Código de verificación enviado",
     "data": {
         "id": "uuid",
-        "curp": "XAXX010101HNEXXXX18",
-        "email": "usuario@email.com",
-        "status": "PENDING",
-        "requestedAt": "2026-04-19T10:00:00"
+        "curp": "XAXX010101HNEXXRA18",
+        "email": "estudiante@enez.edu.mx",
+        "status": "PENDING"
     }
 }
 ```
 
-**Error (400) - CURP no válido**:
-```json
-{
-    "success": false,
-    "message": "No se encontró registro académico activo con este CURP",
-    "data": null
-}
-```
+**Errores:**
+- CURP no existe: "No se encontró registro académico activo con este CURP"
+- Email ya registrado: "El email ya está registrado en el sistema"
+- CURP ya usado: "Ya existe una solicitud de registro con este CURP"
 
 ---
 
-### POST `/api/registration/verify`
+### POST `/api/auth/register/verify` - Verificar Registro
 
-**Descripción**: Verifica el código OTP y crea la cuenta de usuario.
-
-**Request Body**:
 ```json
 {
-    "curp": "XAXX010101HNEXXXX18",
+    "curp": "XAXX010101HNEXXRA18",
     "otp": "123456"
 }
 ```
 
-**Respuesta Exitosa (200)**:
+**Respuesta:**
 ```json
 {
     "success": true,
     "message": "Registro completado",
     "data": {
         "id": "uuid",
-        "curp": "XAXX010101HNEXXXX18",
-        "email": "usuario@email.com",
-        "status": "APPROVED",
-        "requestedAt": "2026-04-19T10:00:00",
-        "processedAt": "2026-04-19T10:05:00"
+        "curp": "XAXX010101HNEXXRA18",
+        "email": "estudiante@enez.edu.mx",
+        "status": "APPROVED"
     }
 }
 ```
 
-**Nota**: Al verificar, se crea el usuario con password temporal. Debe verificar su email antes de hacer login.
+**Nota**: El usuario se crea con password temporal. Roles asignados según CURP (STUDENT o TEACHER).
 
 ---
 
-### POST `/api/registration/verify-email`
+### POST `/api/auth/register/verify-email` - Verificar Email (Opcional)
 
-**Descripción**: Verifica el email del usuario creado.
-
-**Parámetros de Query**:
-| Parámetro | Tipo | Descripción |
-|-----------|------|-------------|
-| userId | string | UUID del usuario |
-| code | string | Código OTP de 6 dígitos |
-
-**Ejemplo**:
-```
-POST {{baseUrl}}/registration/verify-email?userId=uuid&code=123456
-```
-
-**Respuesta Exitosa (200)**:
 ```json
 {
-    "success": true,
-    "message": "Email verificado",
-    "data": null
+    "code": "123456"
 }
 ```
 
----
-
-## 16. Gestión de Usuarios (Admin)
-
-### GET `/api/admin/users`
-
-**Descripción**: Lista todos los usuarios del sistema.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{adminAccessToken}}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": null,
-    "data": [
-        {
-            "id": "uuid",
-            "username": "admin",
-            "email": "admin@enez.edu.mx",
-            "isActive": true,
-            "isVerified": true,
-            "mustVerifyEmail": false,
-            "roles": ["ADMIN"],
-            "createdAt": "2026-04-19T10:00:00"
-        }
-    ]
-}
-```
+**Nota**: Esta verificación es opcional. El usuario puede hacer login sin verificar email.
 
 ---
 
-### POST `/api/admin/users`
+## User Management Endpoints
 
-**Descripción**: Crea un usuario sin necesidad de registro académico.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{adminAccessToken}}
-```
-
-**Request Body**:
-```json
-{
-    "email": "nuevo@email.com",
-    "curp": "XAXX010101HNEXXXX18",
-    "roles": ["STUDENT", "TEACHER"]
-}
-```
-
-**Request Body (sin relación académica)**:
-```json
-{
-    "email": "soporte@enez.edu.mx",
-    "roles": ["ADMIN"]
-}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Usuario creado",
-    "data": {
-        "id": "uuid",
-        "username": "nuevo",
-        "email": "nuevo@email.com",
-        "isActive": true,
-        "isVerified": false,
-        "mustVerifyEmail": true,
-        "roles": ["STUDENT"],
-        "createdAt": "2026-04-19T10:00:00"
-    }
-}
-```
-
-**Nota**: El usuario creado recibe password temporal y debe verificar su email.
-
----
-
-### GET `/api/admin/users/registrations`
-
-**Descripción**: Lista todas las solicitudes de registro.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{adminAccessToken}}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": null,
-    "data": [
-        {
-            "id": "uuid",
-            "curp": "XAXX010101HNEXXXX18",
-            "email": "usuario@email.com",
-            "status": "PENDING",
-            "requestedAt": "2026-04-19T10:00:00"
-        }
-    ]
-}
-```
-
----
-
-### GET `/api/admin/users/registrations/pending`
-
-**Descripción**: Lista solo solicitudes pendientes.
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{adminAccessToken}}
-```
-
----
-
-### DELETE `/api/admin/users/{id}` (Soft Delete)
-
-**Descripción**: Desactiva un usuario (soft delete).
-
-**Headers Requeridos**:
-```
-Authorization: Bearer {{adminAccessToken}}
-```
-
-**Respuesta Exitosa (200)**:
-```json
-{
-    "success": true,
-    "message": "Usuario eliminado",
-    "data": null
-}
-```
-
----
-
-## 17. Flujo Completo de Registro Público
-
-### Paso 1: Iniciar Registro
-```
-POST /api/registration/init
-Body: { "curp": "XAXX010101HNEXXXX18", "email": "correo@ejemplo.com" }
-```
-→ Recibes código OTP por email
-
-### Paso 2: Verificar Registro
-```
-POST /api/registration/verify
-Body: { "curp": "XAXX010101HNEXXXX18", "otp": "123456" }
-```
-→ Se crea usuario con password temporal
-
-### Paso 3: Verificar Email
-```
-POST /api/registration/verify-email?userId={uuid}&code={codigo}
-```
-→ Email verificado, usuario puede hacer login
-
-### Paso 4: Login
-```
-POST /api/auth/login
-Body: { "username": "username", "password": "password_temporal" }
-```
-
-### Paso 5: Cambiar Contraseña
-```
-POST /api/auth/change-password
-Headers: Authorization: Bearer {accessToken}
-Body: { "currentPassword": "password_temporal", "newPassword": "nuevaPass123", "confirmPassword": "nuevaPass123" }
-```
-
----
-
-## 18. Flujo Completo - Admin Crear Usuario
-
-### Paso 1: Admin Login
-```
-POST /api/auth/login
-Body: { "username": "admin", "password": "admin123" }
-```
-Guardar `accessToken`
-
-### Paso 2: Crear Usuario
-```
-POST /api/admin/users
-Headers: Authorization: Bearer {{accessToken}}
-Body: { "email": "nuevo@email.com", "curp": "XAXX010101HNEXXXX18", "roles": ["STUDENT"] }
-```
-
-### Paso 3: Notificar al Usuario
-El sistema envía email con username y password temporal al nuevo usuario.
-
-### Paso 4: Usuario-Verificar Email (como arriba)
-
-### Paso 5: Usuario-Login y Cambio de Contraseña (como arriba)
-
----
-
-## CPANEL - Gestión de Usuarios (ADMIN)
-
-### Base URL: `/api/cpanel`
-
-### Endpoints
+**Base URL**: `http://localhost:8080/api/users`
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
-| GET | `/users` | Listar usuarios (paginados) | ADMIN |
-| GET | `/users/{id}` | Ver usuario específico | ADMIN |
-| POST | `/users` | Crear usuario | ADMIN |
-| PUT | `/users/{id}` | Editar usuario | ADMIN |
-| DELETE | `/users/{id}` | Eliminar usuario (soft delete) | ADMIN |
+| GET | `/` | Listar usuarios (paginados) | ADMIN |
+| GET | `/{id}` | Ver usuario específico | ADMIN |
+| POST | `/` | Crear usuario | ADMIN |
+| PUT | `/{id}` | Editar usuario | ADMIN |
+| DELETE | `/{id}` | Eliminar usuario (soft delete) | ADMIN |
 
-### GET `/api/cpanel/users` - Listar Usuarios
+### GET `/api/users` - Listar Usuarios
 
-**Headers**:
-```
-Authorization: Bearer {{accessToken}}
-```
+**Headers**: `Authorization: Bearer {accessToken}`
 
 **Query Parameters**:
 | Parámetro | Default | Descripción |
@@ -1017,33 +164,21 @@ Authorization: Bearer {{accessToken}}
 | size | 20 | Tamaño por página |
 | sort | createdAt,desc | Ordenamiento |
 
-**Respuesta**:
-```json
-{
-    "success": true,
-    "data": {
-        "content": [...],
-        "totalElements": 45,
-        "totalPages": 3,
-        "size": 20,
-        "number": 0
-    }
-}
-```
+---
 
-### POST `/api/cpanel/users` - Crear Usuario
+### POST `/api/users` - Crear Usuario
 
 **Validación de CURP por Rol:**
 
-| Rol | Requiere CURP | Validación |
-|-----|-------------|------------|
-| STUDENT | Sí | Debe existir en `student` y estar activo |
-| TEACHER | Sí | Debe existir en `teacher` y estar activo |
-| ADMIN | No | Sin CURP |
-| CONTROL_ESCOLAR | No | Sin CURP |
-| DIRECTOR | No | Sin CURP |
+| Rol | Requiere CURP | Máximo Roles |
+|-----|-------------|--------------|
+| STUDENT | Sí | 2 |
+| TEACHER | Sí | 2 |
+| ADMIN | No | 1 |
+| CONTROL_ESCOLAR | No | 1 |
+| DIRECTOR | No | 1 |
 
-**Request Body (Crear ADMIN sin CURP)**:
+**Crear ADMIN (sin CURP, 1 rol):**
 ```json
 {
     "email": "admin@enez.edu.mx",
@@ -1051,20 +186,145 @@ Authorization: Bearer {{accessToken}}
 }
 ```
 
-**Request Body (Crear STUDENT con CURP)**:
+**Crear STUDENT (con CURP, máx 2 roles):**
 ```json
 {
     "email": "estudiante@enez.edu.mx",
-    "curp": "XAXX010101HNEXXXX18",
+    "curp": "XAXX010101HNEXXRA18",
     "roles": ["STUDENT"]
 }
 ```
 
+**Crear usuario con 2 roles (maestro que también es estudiante):**
+```json
+{
+    "email": "profesor@enez.edu.mx",
+    "curp": "XAXX010101HNEXXRA18",
+    "roles": ["TEACHER", "STUDENT"]
+}
+```
+
 **Errores:**
-- CURP requerido: "El CURP es requerido para los roles: [STUDENT, TEACHER]"
-- CURP no existe: "El CURP no corresponde a un registro académico activo"
-- CURP no permitido: "Los roles [ADMIN, CONTROL_ESCOLAR, DIRECTOR] no requieren CURP"
+- Email ya existe: "El email ya está registrado"
+- CURP requerido para STUDENT/TEACHER: "El CURP es requerido para los roles: [STUDENT, TEACHER]"
+- CURP no válido: "El CURP no corresponde a un registro académico activo"
+- Roles mixtos: "No se puede asignar roles que requieren CURP con roles que no lo requieren"
+- Máximo roles excedido: "Los usuarios con registro académico pueden tener máximo 2 roles"
 
-### DELETE `/api/cpanel/users/{id}` - Eliminar Usuario
+---
 
-Realiza un soft delete (is_active = false, is_deleted = true).
+### PUT `/api/users/{id}` - Editar Usuario
+
+```json
+{
+    "isActive": true,
+    "roles": ["ADMIN", "CONTROL_ESCOLAR"],
+    "mustChangePassword": true
+}
+```
+
+---
+
+## Flujos Completos
+
+### Flujo 1: Registro Público de Estudiante
+
+```
+1. POST /api/auth/register/init
+   Body: { "curp": "XAXX...", "email": "est@email.com" }
+   → Recibe OTP por email
+
+2. POST /api/auth/register/verify
+   Body: { "curp": "XAXX...", "otp": "123456" }
+   → Usuario creado con rol STUDENT
+   → Password temporal enviado por email
+
+3. POST /api/auth/login
+   Body: { "username": "...", "password": "password_temp" }
+   → Login exitoso (sin verificar email)
+
+4. POST /api/auth/change-password (opcional)
+   Headers: Authorization: Bearer {token}
+   Body: { "currentPassword": "...", "newPassword": "...", "confirmPassword": "..." }
+```
+
+### Flujo 2: Admin Crear Usuario ADMIN
+
+```
+1. POST /api/auth/login
+   Body: { "username": "admin", "password": "admin123" }
+   → Guardar accessToken
+
+2. POST /api/users
+   Headers: Authorization: Bearer {accessToken}
+   Body: { "email": "nuevo@enez.edu.mx", "roles": ["ADMIN"] }
+   → Usuario creado con password temporal
+
+3. Notificar al usuario (email automático con credenciales)
+
+4. Usuario hace login y cambia contraseña
+```
+
+### Flujo 3: Admin Crear STUDENT con 2 Roles
+
+```
+1. POST /api/users
+   Headers: Authorization: Bearer {accessToken}
+   Body: {
+       "email": "maestro@enez.edu.mx",
+       "curp": "XAXX010101HNEXXRA18",
+       "roles": ["TEACHER", "STUDENT"]
+   }
+   → Usuario creado con 2 roles
+```
+
+### Flujo 4: Recuperación de Contraseña
+
+```
+1. POST /api/auth/recovery
+   Body: { "email": "user@enez.edu.mx" }
+   → OTP enviado por email
+
+2. POST /api/auth/verify-otp
+   Body: { "email": "user@enez.edu.mx", "code": "123456", "purpose": "PASSWORD_RECOVERY" }
+
+3. POST /api/auth/reset-password
+   Body: { "email": "user@enez.edu.mx", "token": "123456", "newPassword": " nueva..." }
+```
+
+### Flujo 5: Login con 2FA
+
+```
+1. POST /api/auth/login
+   Body: { "username": "...", "password": "..." }
+   → Recibe tempToken
+
+2. POST /api/auth/verify-2fa
+   Body: { "tempToken": "...", "code": "123456" }
+   → Login completo
+```
+
+---
+
+## Códigos de Error
+
+| Código | Descripción |
+|--------|-------------|
+| 200 | Éxito |
+| 400 | Validación fallida |
+| 401 | No autenticado |
+| 403 | Sin permisos (ADMIN requerido) |
+| 429 | Rate limit excedido |
+
+---
+
+## Variables de Entorno Postman
+
+```json
+{
+    "baseUrl": "http://localhost:8080/api",
+    "authUrl": "http://localhost:8080/api/auth",
+    "accessToken": "",
+    "refreshToken": ""
+}
+```
