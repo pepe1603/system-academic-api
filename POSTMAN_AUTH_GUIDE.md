@@ -25,6 +25,7 @@ Guía para probar los endpoints del sistema.
 | POST | `/verify-otp` | Verificar código OTP | No |
 | POST | `/reset-password` | Restablecer contraseña | No |
 | POST | `/change-password` | Cambiar contraseña | Sí |
+| POST | `/change-password-temp` | Cambiar password temporal (sin token) | No |
 | POST | `/2fa/request-setup` | Solicitar setup 2FA | Sí |
 | POST | `/2fa/enable` | Habilitar 2FA | Sí |
 | POST | `/2fa/disable` | Deshabilitar 2FA | Sí |
@@ -53,6 +54,55 @@ Guía para probar los endpoints del sistema.
         "expiresIn": 3600,
         "requiresTwoFactor": false
     }
+}
+```
+
+**Respuesta - Cambio de contraseña requerido:**
+```json
+{
+    "success": false,
+    "message": "Debe cambiar su contraseña antes de continuar",
+    "data": null,
+    "requiresPasswordChange": true
+}
+```
+
+---
+
+### POST `/api/auth/change-password-temp`
+
+**Descripción**: Permite cambiar la contraseña temporal sin necesidad de JWT token. Útil para usuarios nuevos que no pueden hacer login normal.
+
+```json
+{
+    "email": "usuario@enez.edu.mx",
+    "tempPassword": "ZMDeJc2y3xYY",
+    "newPassword": "Test123456!",
+    "confirmPassword": "Test123456!"
+}
+```
+
+**Validaciones:**
+- Password temporal debe coincidir con la asignada
+- Email debe existir
+- newPassword y confirmPassword deben ser iguales
+- newPassword debe cumplir requisitos: 8+ chars, mayúscula, minúscula, número, símbolo
+
+**Respuesta exitosa:**
+```json
+{
+    "success": true,
+    "message": "Contraseña actualizada",
+    "data": {
+        "userId": "uuid",
+        "username": "usuario",
+        "email": "usuario@enez.edu.mx",
+        "roles": ["ADMIN"],
+        "accessToken": "eyJhbG...",
+        "refreshToken": "eyJhbG...",
+        "expiresIn": 900000
+    },
+    "requiresPasswordChange": false
 }
 ```
 
@@ -223,6 +273,31 @@ Guía para probar los endpoints del sistema.
 }
 ```
 
+**Errores:**
+- Password temporal incorrecta: "Credenciales inválidas"
+- Email no existe: "Usuario no encontrado"
+- Contraseñas no coinciden: "Las contraseñas no coinciden"
+
+---
+
+## Flujo de Verificación de Email
+
+El sistema maneja dos tipos de usuarios con diferente verificación:
+
+| Tipo | `mustVerifyEmail` | `isVerified` | Puede hacer login? |
+|------|------------------|--------------|-------------------|
+| **Auto-registro público** | `true` | `false` | ❌ No - debe verificar email |
+| **Creado por Admin** | `false` (default) | `false` | ✅ Sí - admin ya validó email |
+
+**Auto-registro** (`/api/registration/**`):
+- Usuario se crea con `mustVerifyEmail=true`
+- Login requiere verificar email primero via `/api/registration/verify-email`
+
+**Creado por Admin** (`/api/users`):
+- Usuario se crea con `mustVerifyEmail=false` (default)
+- Admin ya validó el email al crear la cuenta
+- Puede hacer login directamente
+
 ---
 
 ## Flujos Completos
@@ -259,10 +334,33 @@ Guía para probar los endpoints del sistema.
    Headers: Authorization: Bearer {accessToken}
    Body: { "email": "nuevo@enez.edu.mx", "roles": ["ADMIN"] }
    → Usuario creado con password temporal
+   → Email enviado con credenciales
 
-3. Notificar al usuario (email automático con credenciales)
+3. POST /api/auth/change-password-temp
+   Body: { "email": "nuevo@enez.edu.mx", "tempPassword": "...", "newPassword": "...", "confirmPassword": "..." }
+   → Devuelve tokens JWT completos
 
-4. Usuario hace login y cambia contraseña
+4. POST /api/auth/login
+   Body: { "username": "...", "password": "nuevaPassword" }
+   → Login normal exitoso
+```
+
+### Flujo 2b: Usuario Admin - Login Completo
+
+```
+1. Admin crea usuario → recibe password temporal por email
+
+2. POST /api/auth/login
+   Body: { "username": "...", "password": "tempPassword" }
+   → { "requiresPasswordChange": true, "message": "Debe cambiar su contraseña" }
+
+3. POST /api/auth/change-password-temp
+   Body: { "email": "...", "tempPassword": "...", "newPassword": "...", "confirmPassword": "..." }
+   → { "accessToken": "...", "refreshToken": "..." }
+
+4. POST /api/auth/login (futuro)
+   Body: { "username": "...", "password": "nuevaPassword" }
+   → Login normal exitoso
 ```
 
 ### Flujo 3: Admin Crear STUDENT con 2 Roles

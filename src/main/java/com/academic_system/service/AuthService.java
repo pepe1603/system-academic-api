@@ -346,4 +346,27 @@ public class AuthService {
 
         return ApiResponse.success("Contraseña cambiada exitosamente", null);
     }
+
+    @Transactional
+    public LoginResponse changeTempPassword(String email, String tempPassword, String newPassword) {
+        User user = userRepository.findByEmail(email.toLowerCase())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (!tempPassword.equals(user.getTempPassword())) {
+            throw new BadCredentialsException("Contraseña temporal inválida");
+        }
+
+        if (!user.getIsActive()) {
+            throw new IllegalStateException("La cuenta está desactivada");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setTempPassword(null);
+        user.setTempPassword(null);
+        user.setPasswordChangedAt(LocalDateTime.now());
+        user.setMustChangePassword(false);
+        user = userRepository.save(user);
+
+        return completeLogin(user);
+    }
 }

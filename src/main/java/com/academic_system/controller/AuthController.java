@@ -90,6 +90,24 @@ public class AuthController {
         return ResponseEntity.ok(authService.changePassword(request));
     }
 
+    @PostMapping("/change-password-temp")
+    public ResponseEntity<ApiResponse<LoginResponse>> changeTempPassword(
+            @Valid @RequestBody ChangeTempPasswordRequest request) {
+        
+        if (!request.isPasswordMatch()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Las contraseñas no coinciden"));
+        }
+        
+        LoginResponse response = authService.changeTempPassword(
+                request.getEmail(),
+                request.getTempPassword(),
+                request.getNewPassword()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success("Contraseña actualizada", response));
+    }
+
     // === 2FA ENDPOINTS con OTP propio ===
 
     @PostMapping("/2fa/request-setup")
