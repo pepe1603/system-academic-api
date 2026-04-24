@@ -239,10 +239,18 @@ public class RegistrationService {
         if (sanitized.length() < 3) {
             sanitized = "user" + System.currentTimeMillis() % 10000;
         }
-        if (userRepository.existsByUsername(sanitized)) {
-            return sanitized + random.nextInt(99);
+        
+        String candidate = sanitized;
+        int suffix = 0;
+        while (userRepository.existsByUsername(candidate)) {
+            suffix++;
+            candidate = sanitized + suffix;
+            if (suffix > 1000) {
+                candidate = sanitized + System.currentTimeMillis() % 100000;
+                break;
+            }
         }
-        return sanitized;
+        return candidate;
     }
 
     private RegistrationRequestDTO toDTO(RegistrationRequest req, Student student, Teacher teacher) {
