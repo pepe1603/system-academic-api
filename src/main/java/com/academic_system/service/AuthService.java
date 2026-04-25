@@ -42,6 +42,7 @@ public class AuthService {
     private final OtpService otpService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+    private final UserSecurityService userSecurityService;
 
     @Value("${security.password.expiry-days:90}")
     private int passwordExpiryDays;
@@ -81,7 +82,7 @@ public class AuthService {
             );
             userDetails = (CustomUserDetails) authentication.getPrincipal();
         } catch (Exception e) {
-            recordFailedLoginAttempt(user);
+            userSecurityService.recordFailedLoginAttempt(request.getUsername());
             throw new BadCredentialsException("Credenciales inválidas");
         }
 
@@ -133,7 +134,7 @@ public class AuthService {
 
 
     private LoginResponse completeLogin(User user) {
-        user.resetFailedAttempts();
+        userSecurityService.resetFailedAttempts(user.getUsername());
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
@@ -374,17 +375,5 @@ public class AuthService {
         user = userRepository.save(user);
 
         return completeLogin(user);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void recordFailedLoginAttempt(User user) {
-        user.incrementFailedAttempts();
-        if (user.getFailedAttempts() >= maxLoginAttempts) {
-            user.setIsLocked(true);
-            log.warn("Usuario {} bloqueado tras {} intentos fallidos", 
-                    user.getUsername(), user.getFailedAttempts());
-        }
-        userRepository.save(user);
-        userRepository.flush();
     }
 }

@@ -3,6 +3,7 @@ package com.academic_system.controller.cpanel;
 import com.academic_system.dto.auth.ApiResponse;
 import com.academic_system.dto.cpanel.CreateUserRequest;
 import com.academic_system.dto.cpanel.UserDTO;
+import com.academic_system.service.UserSecurityService;
 import com.academic_system.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.Set;
 public class UserController {
 
     private final UserService userService;
+    private final UserSecurityService userSecurityService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<UserDTO>>> getAllUsers(Pageable pageable) {
@@ -57,6 +59,18 @@ public class UserController {
     @DeleteMapping("/{id}/sessions")
     public ResponseEntity<ApiResponse<Void>> revokeUserSessions(@PathVariable String id) {
         return ResponseEntity.ok(userService.revokeAllSessions(id));
+    }
+
+    @PutMapping("/{id}/unlock")
+    public ResponseEntity<ApiResponse<Void>> unlockUser(@PathVariable String id) {
+        userSecurityService.unlockUser(java.util.UUID.fromString(id));
+        return ResponseEntity.ok(ApiResponse.success("Usuario desbloqueado", null));
+    }
+
+    @PutMapping("/{id}/lock")
+    public ResponseEntity<ApiResponse<Void>> lockUser(@PathVariable String id) {
+        userSecurityService.lockUser(java.util.UUID.fromString(id));
+        return ResponseEntity.ok(ApiResponse.success("Usuario bloqueado", null));
     }
 
     @lombok.Data
