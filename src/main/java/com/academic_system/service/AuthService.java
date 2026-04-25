@@ -81,9 +81,10 @@ public class AuthService {
             userDetails = (CustomUserDetails) authentication.getPrincipal();
         } catch (Exception e) {
             user.incrementFailedAttempts();
+            userRepository.save(user);
             if (user.getFailedAttempts() >= maxLoginAttempts) {
-                user.setIsLocked(true);
-                userRepository.save(user);
+                log.warn("Usuario {} bloqueado tras {} intentos fallidos", 
+                        user.getUsername(), user.getFailedAttempts());
             }
             throw new BadCredentialsException("Credenciales inválidas");
         }
