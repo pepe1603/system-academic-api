@@ -21,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -80,14 +81,7 @@ public class AuthService {
             );
             userDetails = (CustomUserDetails) authentication.getPrincipal();
         } catch (Exception e) {
-            user.incrementFailedAttempts();
-            if (user.getFailedAttempts() >= maxLoginAttempts) {
-                user.setIsLocked(true);
-                log.warn("Usuario {} bloqueado tras {} intentos fallidos", 
-                        user.getUsername(), user.getFailedAttempts());
-            }
-            userRepository.save(user);
-            userRepository.flush();
+            recordFailedLoginAttempt(user);
             throw new BadCredentialsException("Credenciales inválidas");
         }
 
@@ -380,5 +374,17 @@ public class AuthService {
         user = userRepository.save(user);
 
         return completeLogin(user);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFailedLoginAttempt(User user) {
+        user.incrementFailedAttempts();
+        if (user.getFailedAttempts() >= maxLoginAttempts) {
+            user.setIsLocked(true);
+            log.warn("Usuario {} bloqueado tras {} intentos fallidos", 
+                    user.getUsername(), user.getFailedAttempts());
+        }
+        userRepository.save(user);
+        userRepository.flush();
     }
 }
