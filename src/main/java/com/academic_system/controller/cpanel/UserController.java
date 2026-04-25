@@ -54,6 +54,11 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("Usuario eliminado", null));
     }
 
+    @DeleteMapping("/{id}/sessions")
+    public ResponseEntity<ApiResponse<Void>> revokeUserSessions(@PathVariable String id) {
+        return ResponseEntity.ok(userService.revokeAllSessions(id));
+    }
+
     @lombok.Data
     @lombok.NoArgsConstructor
     @lombok.AllArgsConstructor

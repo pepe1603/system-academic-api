@@ -70,14 +70,23 @@ public class AuthService {
         }
 
         // Autenticar (valida password)
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
-
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        CustomUserDetails userDetails;
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getUsername(),
+                            request.getPassword()
+                    )
+            );
+            userDetails = (CustomUserDetails) authentication.getPrincipal();
+        } catch (Exception e) {
+            user.incrementFailedAttempts();
+            if (user.getFailedAttempts() >= maxLoginAttempts) {
+                user.setIsLocked(true);
+                userRepository.save(user);
+            }
+            throw new BadCredentialsException("Credenciales inválidas");
+        }
 
         // Verificar si debe cambiar contraseña DESPUÉS de validar password
         if (Boolean.TRUE.equals(user.getMustChangePassword())) {

@@ -1,5 +1,6 @@
 package com.academic_system.service;
 
+import com.academic_system.dto.auth.ApiResponse;
 import com.academic_system.dto.cpanel.CreateUserRequest;
 import com.academic_system.dto.cpanel.UserDTO;
 import com.academic_system.entity.postgres.Role;
@@ -33,6 +34,7 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final UserSessionRepository userSessionRepository;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -162,6 +164,16 @@ public class UserService {
         user.setIsActive(false);
         user.setIsDeleted(true);
         userRepository.save(user);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public ApiResponse<Void> revokeAllSessions(String id) {
+        UUID uuid = UUID.fromString(id);
+        User user = userRepository.findById(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        userSessionRepository.invalidateAllSessionsForUser(user.getId());
+        return ApiResponse.success("Sesiones invalidadas", null);
     }
 
     private void validateRolesAndCurp(CreateUserRequest request, boolean hasCurp) {
