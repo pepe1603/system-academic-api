@@ -36,8 +36,15 @@ public class PortalService {
 
     @Transactional("mysqlTransactionManager")
     public InstitutionDTO updateInstitution(InstitutionDTO dto) {
-        Institution institution = institutionRepository.findById(dto.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Institución no encontrada"));
+        Institution institution;
+        
+        if (dto.getId() != null && !dto.getId().isEmpty()) {
+            institution = institutionRepository.findById(dto.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Institución no encontrada"));
+        } else {
+            institution = institutionRepository.findByIsActiveTrue()
+                    .orElseThrow(() -> new IllegalArgumentException("No hay institución activa para actualizar"));
+        }
 
         if (dto.getName() != null) institution.setName(dto.getName());
         if (dto.getAddress() != null) institution.setAddress(dto.getAddress());
