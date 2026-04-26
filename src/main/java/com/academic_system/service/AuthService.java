@@ -55,8 +55,12 @@ public class AuthService {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
 
-        // Verificar si la cuenta está bloqueada
-        if (user.getIsLocked()) {
+        userSecurityService.checkAndAutoUnlock(request.getUsername());
+
+        user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
+
+        if (Boolean.TRUE.equals(user.getIsLocked())) {
             throw new LockedException("Cuenta bloqueada por intentos fallidos. Contacte al administrador.");
         }
 
