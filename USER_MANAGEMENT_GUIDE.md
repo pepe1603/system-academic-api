@@ -66,7 +66,21 @@ GET /api/users/{id}
 |-----------|------|-------------|
 | id | UUID (string) | ID del usuario |
 
-**Respuesta:** Mismo formato que elemento individual de la lista.
+**Respuesta:** Mismo formato que elemento individual de la lista, **incluyendo permisos:**
+```json
+{
+  "id": "uuid",
+  "username": "admin",
+  "email": "admin@enez.edu.mx",
+  "isActive": true,
+  "isVerified": false,
+  "isDeleted": false,
+  "mustChangePassword": true,
+  "roles": ["ADMIN"],
+  "permissions": ["USER_VIEW", "USER_CREATE", "..."],
+  "createdAt": "2026-04-24T12:00:00"
+}
+```
 
 **Excepciones:**
 - `404 Not Found` - "Usuario no encontrado"
@@ -163,7 +177,44 @@ Authorization: Bearer {token}
 
 ---
 
-### 5. Eliminar Usuario (Soft Delete)
+### 5. Listar Usuarios Eliminados (Soft Delete)
+
+```
+GET /api/users/deleted
+Authorization: Bearer {token}
+```
+
+**Respuesta:** Mismo formato que `GET /api/users`, solo muestra usuarios con `isDeleted=true`.
+
+---
+
+### 6. Ver Permisos por Rol
+
+```
+GET /api/users/roles/permissions?roleName=ADMIN
+Authorization: Bearer {token}
+```
+
+**Parámetros (query):**
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| roleName | String | Nombre del rol |
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "data": ["USER_VIEW", "USER_CREATE", "..."],
+  "requiresPasswordChange": false
+}
+```
+
+**Excepciones:**
+- `404 Not Found` - "Rol no encontrado: {roleName}"
+
+---
+
+### 7. Eliminar Usuario (Soft Delete)
 
 ```
 DELETE /api/users/{id}
@@ -171,6 +222,8 @@ Authorization: Bearer {token}
 ```
 
 **Efecto:** Marca `isActive=false` e `isDeleted=true`. No borra físicamente.
+
+**Validación:** Un admin **NO** puede eliminar su propia cuenta.
 
 **Respuesta:**
 ```json
@@ -184,6 +237,141 @@ Authorization: Bearer {token}
 
 **Excepciones:**
 - `404 Not Found` - "Usuario no encontrado"
+- `400 Bad Request` - "No puede eliminar su propia cuenta"
+
+---
+
+### 8. Revocar Todas las Sesiones
+
+```
+DELETE /api/users/{id}/sessions
+Authorization: Bearer {token}
+```
+
+**Efecto:** Invalida todos los JWT tokens activos del usuario.
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Sesiones invalidadas",
+  "data": null,
+  "requiresPasswordChange": false
+}
+```
+
+**Excepciones:**
+- `404 Not Found` - "Usuario no encontrado"
+
+---
+
+### 9. Desbloquear Usuario (Manual)
+
+```
+PUT /api/users/{id}/unlock
+Authorization: Bearer {token}
+```
+
+**Efecto:**
+- `isLocked = false`
+- `failedAttempts = 0`
+- Elimina key de Redis (si existe)
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Usuario desbloqueado",
+  "data": null,
+  "requiresPasswordChange": false
+}
+```
+
+**Excepciones:**
+- `404 Not Found` - "Usuario no encontrado"
+
+**Nota:** También se desbloquea automáticamente tras 30 min (Redis TTL).
+
+---
+
+### 10. Bloquear Usuario (Manual)
+
+```
+PUT /api/users/{id}/lock
+Authorization: Bearer {token}
+```
+
+**Efecto:**
+- `isLocked = true`
+- `failedAttempts = maxLoginAttempts` (10)
+- Crea key en Redis con TTL 30 min
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Usuario bloqueado",
+  "data": null,
+  "requiresPasswordChange": false
+}
+```
+
+**Excepciones:**
+- `404 Not Found` - "Usuario no encontrado"
+
+---
+
+### 11. Banear Usuario (Desactivar sin Eliminar)
+
+```
+PUT /api/users/{id}/ban
+Authorization: Bearer {token}
+```
+
+**Efecto:**
+- `isActive = false`
+- Invalida todas las sesiones del usuario
+- **NO** marca `isDeleted=true` (no es soft delete)
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Usuario baneado (desactivado)",
+  "data": null,
+  "requiresPasswordChange": false
+}
+```
+
+**Excepciones:**
+- `404 Not Found` - "Usuario no encontrado"
+
+---
+
+### 12. Eliminar Usuario (Soft Delete)
+
+```
+DELETE /api/users/{id}
+Authorization: Bearer {token}
+```
+
+**Efecto:** Marca `isActive=false` e `isDeleted=true`. No borra físicamente.
+
+**Validación:** Un admin **NO** puede eliminar su propia cuenta.
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Usuario eliminado",
+  "data": null,
+  "requiresPasswordChange": false
+}
+```
+
+**Excepciones:**
+- `404 Not Found` - "Usuario no encontrado"
+- `400 Bad Request` - "No puede eliminar su propia cuenta"
 
 ---
 

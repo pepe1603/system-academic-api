@@ -19,7 +19,9 @@ public class UserDTO {
     private String email;
     private Boolean isActive;
     private Boolean isVerified;
+    private Boolean isDeleted;
     private Boolean mustChangePassword;
     private Set<String> roles;
+    private Set<String> permissions;
     private LocalDateTime createdAt;
 }

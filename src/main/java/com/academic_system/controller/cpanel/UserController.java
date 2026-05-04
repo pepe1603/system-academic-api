@@ -3,6 +3,7 @@ package com.academic_system.controller.cpanel;
 import com.academic_system.dto.auth.ApiResponse;
 import com.academic_system.dto.cpanel.CreateUserRequest;
 import com.academic_system.dto.cpanel.UserDTO;
+import com.academic_system.security.CustomUserDetails;
 import com.academic_system.service.UserSecurityService;
 import com.academic_system.service.UserService;
 import jakarta.validation.Valid;
@@ -11,9 +12,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -30,10 +34,24 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 
+    @GetMapping("/deleted")
+    public ResponseEntity<ApiResponse<Page<UserDTO>>> getDeletedUsers(Pageable pageable) {
+        Page<UserDTO> page = userService.getDeletedUsers(pageable);
+        return ResponseEntity.ok(ApiResponse.success(page));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserDTO>> getUser(@PathVariable String id) {
         UserDTO user = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.success(user));
+    }
+
+    @GetMapping("/roles/permissions")
+    public ResponseEntity<ApiResponse<List<String>>> getPermissionsByRole(@RequestParam String roleName) {
+        Set<String> permissions = userService.getPermissionsByRole(roleName);
+        return ResponseEntity.ok(ApiResponse.success(
+                permissions.stream().collect(Collectors.toList())
+        ));
     }
 
     @PostMapping
@@ -51,8 +69,10 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable String id) {
-        userService.deleteUser(id);
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @PathVariable String id,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        userService.deleteUser(id, currentUser.getUserId().toString());
         return ResponseEntity.ok(ApiResponse.success("Usuario eliminado", null));
     }
 
@@ -71,6 +91,12 @@ public class UserController {
     public ResponseEntity<ApiResponse<Void>> lockUser(@PathVariable String id) {
         userSecurityService.lockUser(java.util.UUID.fromString(id));
         return ResponseEntity.ok(ApiResponse.success("Usuario bloqueado", null));
+    }
+
+    @PutMapping("/{id}/ban")
+    public ResponseEntity<ApiResponse<Void>> banUser(@PathVariable String id) {
+        userService.banUser(id);
+        return ResponseEntity.ok(ApiResponse.success("Usuario baneado (desactivado)", null));
     }
 
     @lombok.Data

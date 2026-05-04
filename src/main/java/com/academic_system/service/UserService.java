@@ -3,6 +3,7 @@ package com.academic_system.service;
 import com.academic_system.dto.auth.ApiResponse;
 import com.academic_system.dto.cpanel.CreateUserRequest;
 import com.academic_system.dto.cpanel.UserDTO;
+import com.academic_system.entity.postgres.Permission;
 import com.academic_system.entity.postgres.Role;
 import com.academic_system.entity.postgres.Student;
 import com.academic_system.entity.postgres.Teacher;
@@ -44,7 +45,12 @@ public class UserService {
     private static final int MAX_ROLES_WITHOUT_CURP = 1;
 
     public Page<UserDTO> getAllUsers(Pageable pageable) {
-        Page<User> page = userRepository.findAll(pageable);
+        Page<User> page = userRepository.findAllByIsDeletedFalseOrIsDeletedIsNull(pageable);
+        return page.map(this::toDTO);
+    }
+
+    public Page<UserDTO> getDeletedUsers(Pageable pageable) {
+        Page<User> page = userRepository.findAllByIsDeletedTrue(pageable);
         return page.map(this::toDTO);
     }
 
@@ -156,7 +162,11 @@ public class UserService {
     }
 
     @Transactional("postgresTransactionManager")
-    public void deleteUser(String id) {
+    public void deleteUser(String id, String currentUserId) {
+        if (id.equals(currentUserId)) {
+            throw new IllegalStateException("No puede eliminar su propia cuenta");
+        }
+
         UUID uuid = UUID.fromString(id);
         User user = userRepository.findById(uuid)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
@@ -174,6 +184,28 @@ public class UserService {
 
         userSessionRepository.invalidateAllSessionsForUser(user.getId());
         return ApiResponse.success("Sesiones invalidadas", null);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public ApiResponse<Void> banUser(String id) {
+        UUID uuid = UUID.fromString(id);
+        User user = userRepository.findById(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        user.setIsActive(false);
+        userRepository.save(user);
+
+        userSessionRepository.invalidateAllSessionsForUser(user.getId());
+
+        return ApiResponse.success("Usuario baneado (desactivado)", null);
+    }
+
+    public Set<String> getPermissionsByRole(String roleName) {
+        return roleRepository.findByName(roleName)
+                .map(role -> role.getPermissions().stream()
+                        .map(Permission::getCode)
+                        .collect(Collectors.toSet()))
+                .orElseThrow(() -> new IllegalArgumentException("Rol no encontrado: " + roleName));
     }
 
     private void validateRolesAndCurp(CreateUserRequest request, boolean hasCurp) {
@@ -272,8 +304,13 @@ public class UserService {
                 .email(user.getEmail())
                 .isActive(user.getIsActive())
                 .isVerified(user.getIsVerified())
+                .isDeleted(user.getIsDeleted())
                 .mustChangePassword(user.getMustChangePassword())
                 .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))
+                .permissions(user.getRoles().stream()
+                        .flatMap(role -> role.getPermissions().stream())
+                        .map(permission -> permission.getCode())
+                        .collect(Collectors.toSet()))
                 .createdAt(user.getCreatedAt())
                 .build();
     }
