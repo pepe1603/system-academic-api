@@ -1,0 +1,104 @@
+package com.academic_system.service;
+
+import com.academic_system.dto.cpanel.UpdateProfileRequest;
+import com.academic_system.dto.cpanel.UserProfileDTO;
+import com.academic_system.entity.postgres.User;
+import com.academic_system.entity.postgres.UserProfile;
+import com.academic_system.repository.postgres.UserProfileRepository;
+import com.academic_system.repository.postgres.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class UserProfileService {
+
+    private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+
+    @Transactional(readOnly = true)
+    public Optional<UserProfileDTO> getProfileByUserId(String userId) {
+        return userProfileRepository.findByUserId(java.util.UUID.fromString(userId))
+                .map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<UserProfileDTO> getProfileByCurp(String curp) {
+        return userProfileRepository.findByCurp(curp)
+                .map(this::toDTO);
+    }
+
+    @Transactional
+    public UserProfileDTO createOrUpdateProfile(String userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(java.util.UUID.fromString(userId))
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        UserProfile profile = userProfileRepository.findByUserId(user.getId())
+                .orElse(new UserProfile());
+
+        if (profile.getId() == null) {
+            profile.setUser(user);
+        }
+
+        if (request.getFirstName() != null) profile.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) profile.setLastName(request.getLastName());
+        if (request.getCurp() != null) profile.setCurp(request.getCurp());
+        if (request.getRfc() != null) profile.setRfc(request.getRfc());
+        if (request.getPhone() != null) profile.setPhone(request.getPhone());
+        if (request.getSecondaryPhone() != null) profile.setSecondaryPhone(request.getSecondaryPhone());
+        if (request.getBirthDate() != null) profile.setBirthDate(request.getBirthDate());
+        if (request.getGender() != null) profile.setGender(request.getGender());
+        if (request.getEmployeeNumber() != null) profile.setEmployeeNumber(request.getEmployeeNumber());
+        if (request.getEnrollmentNumber() != null) profile.setEnrollmentNumber(request.getEnrollmentNumber());
+        if (request.getInstitutionalEmail() != null) profile.setInstitutionalEmail(request.getInstitutionalEmail());
+        if (request.getSecondaryEmail() != null) profile.setSecondaryEmail(request.getSecondaryEmail());
+        if (request.getAddress() != null) profile.setAddress(request.getAddress());
+        if (request.getCity() != null) profile.setCity(request.getCity());
+        if (request.getState() != null) profile.setState(request.getState());
+        if (request.getPostalCode() != null) profile.setPostalCode(request.getPostalCode());
+        if (request.getProfilePictureUrl() != null) profile.setProfilePictureUrl(request.getProfilePictureUrl());
+
+        profile = userProfileRepository.save(profile);
+        return toDTO(profile);
+    }
+
+    @Transactional
+    public void deleteProfile(String userId) {
+        userProfileRepository.findByUserId(java.util.UUID.fromString(userId))
+                .ifPresent(profile -> {
+                    profile.setIsDeleted(true);
+                    userProfileRepository.save(profile);
+                });
+    }
+
+    private UserProfileDTO toDTO(UserProfile profile) {
+        return UserProfileDTO.builder()
+                .id(profile.getId())
+                .firstName(profile.getFirstName())
+                .lastName(profile.getLastName())
+                .curp(profile.getCurp())
+                .rfc(profile.getRfc())
+                .phone(profile.getPhone())
+                .secondaryPhone(profile.getSecondaryPhone())
+                .birthDate(profile.getBirthDate())
+                .gender(profile.getGender())
+                .employeeNumber(profile.getEmployeeNumber())
+                .enrollmentNumber(profile.getEnrollmentNumber())
+                .institutionalEmail(profile.getInstitutionalEmail())
+                .secondaryEmail(profile.getSecondaryEmail())
+                .address(profile.getAddress())
+                .city(profile.getCity())
+                .state(profile.getState())
+                .postalCode(profile.getPostalCode())
+                .profilePictureUrl(profile.getProfilePictureUrl())
+                .isActive(profile.getIsActive())
+                .isDeleted(profile.getIsDeleted())
+                .createdAt(profile.getCreatedAt())
+                .build();
+    }
+}
