@@ -1,9 +1,14 @@
 package com.academic_system.service;
 
+import com.academic_system.dto.cpanel.EnrichedProfileDTO;
 import com.academic_system.dto.cpanel.UpdateProfileRequest;
 import com.academic_system.dto.cpanel.UserProfileDTO;
+import com.academic_system.entity.postgres.Student;
+import com.academic_system.entity.postgres.Teacher;
 import com.academic_system.entity.postgres.User;
 import com.academic_system.entity.postgres.UserProfile;
+import com.academic_system.repository.postgres.StudentRepository;
+import com.academic_system.repository.postgres.TeacherRepository;
 import com.academic_system.repository.postgres.UserProfileRepository;
 import com.academic_system.repository.postgres.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -20,6 +27,47 @@ public class UserProfileService {
 
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final StudentRepository studentRepository;
+    private final TeacherRepository teacherRepository;
+
+    @Transactional(readOnly = true)
+    public Optional<EnrichedProfileDTO> getEnrichedProfileByUserId(String userId) {
+        Optional<User> userOpt = userRepository.findById(java.util.UUID.fromString(userId));
+        if (userOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        User user = userOpt.get();
+        Set<String> roles = user.getRoles().stream()
+                .map(role -> role.getName())
+                .collect(Collectors.toSet());
+
+        Optional<UserProfile> profileOpt = userProfileRepository.findByUserId(user.getId());
+        UserProfileDTO profileDTO = profileOpt.map(this::toDTO).orElse(null);
+
+        EnrichedProfileDTO enrichedProfile;
+        if (profileDTO != null) {
+            enrichedProfile = EnrichedProfileDTO.fromUserProfile(profileDTO, roles);
+        } else {
+            enrichedProfile = EnrichedProfileDTO.builder()
+                    .roles(roles)
+                    .build();
+        }
+
+        // Enrich with academic data based on roles and CURP
+        if (profileDTO != null && profileDTO.getCurp() != null) {
+            if (roles.contains("STUDENT")) {
+                studentRepository.findByCurpAndIsDeletedFalse(profileDTO.getCurp())
+                        .ifPresent(enrichedProfile::enrichWithStudent);
+            }
+            if (roles.contains("TEACHER")) {
+                teacherRepository.findByCurpAndIsDeletedFalse(profileDTO.getCurp())
+                        .ifPresent(enrichedProfile::enrichWithTeacher);
+            }
+        }
+
+        return Optional.of(enrichedProfile);
+    }
 
     @Transactional(readOnly = true)
     public Optional<UserProfileDTO> getProfileByUserId(String userId) {

@@ -1,6 +1,7 @@
 package com.academic_system.controller.cpanel;
 
 import com.academic_system.dto.auth.ApiResponse;
+import com.academic_system.dto.cpanel.EnrichedProfileDTO;
 import com.academic_system.dto.cpanel.UpdateProfileRequest;
 import com.academic_system.dto.cpanel.UserProfileDTO;
 import com.academic_system.security.CustomUserDetails;
@@ -13,7 +14,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,9 +29,9 @@ public class UserProfileController {
     private final UserProfileService userProfileService;
 
     @GetMapping("/profile/me")
-    public ResponseEntity<ApiResponse<UserProfileDTO>> getMyProfile(
+    public ResponseEntity<ApiResponse<EnrichedProfileDTO>> getMyProfile(
             @AuthenticationPrincipal CustomUserDetails currentUser) {
-        Optional<UserProfileDTO> profile = userProfileService.getProfileByUserId(currentUser.getUserId().toString());
+        Optional<EnrichedProfileDTO> profile = userProfileService.getEnrichedProfileByUserId(currentUser.getUserId().toString());
         return profile.map(p -> ResponseEntity.ok(ApiResponse.success(p)))
                 .orElseGet(() -> ResponseEntity.ok(ApiResponse.success(null)));
     }
@@ -46,8 +46,8 @@ public class UserProfileController {
 
     @GetMapping("/users/{id}/profile")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<UserProfileDTO>> getUserProfile(@PathVariable String id) {
-        Optional<UserProfileDTO> profile = userProfileService.getProfileByUserId(id);
+    public ResponseEntity<ApiResponse<EnrichedProfileDTO>> getUserProfile(@PathVariable String id) {
+        Optional<EnrichedProfileDTO> profile = userProfileService.getEnrichedProfileByUserId(id);
         return profile.map(p -> ResponseEntity.ok(ApiResponse.success(p)))
                 .orElseGet(() -> ResponseEntity.ok(ApiResponse.success(null)));
     }
