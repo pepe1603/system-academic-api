@@ -48,4 +48,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     // Para listar usuarios borrados
     Page<User> findAllByIsDeletedTrue(Pageable pageable);
+
+    // Find by CURP through profile
+    @Query("SELECT u FROM User u JOIN UserProfile p ON u.id = p.user WHERE p.curp = :curp")
+    Optional<User> findByCurp(String curp);
 }

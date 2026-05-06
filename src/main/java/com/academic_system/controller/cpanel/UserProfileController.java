@@ -79,4 +79,19 @@ public class UserProfileController {
         UserProfileDTO profile = userProfileService.createOrUpdateProfile(currentUser.getUserId().toString(), request);
         return ResponseEntity.ok(ApiResponse.success("Foto de perfil actualizada", profile));
     }
+
+    @GetMapping("/profile/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<EnrichedProfileDTO>> searchProfileByCurp(@RequestParam String curp) {
+        Optional<EnrichedProfileDTO> profile = userProfileService.getEnrichedProfileByCurp(curp);
+        return profile.map(p -> ResponseEntity.ok(ApiResponse.success(p)))
+                .orElseGet(() -> ResponseEntity.ok(ApiResponse.error("Perfil no encontrado")));
+    }
+
+    @GetMapping("/profile/me/academic-history")
+    public ResponseEntity<ApiResponse<Object>> getMyAcademicHistory(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        Object history = userProfileService.getAcademicHistory(currentUser.getUserId().toString());
+        return ResponseEntity.ok(ApiResponse.success(history));
+    }
 }

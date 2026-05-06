@@ -81,10 +81,72 @@ public class UserProfileService {
                 .map(this::toDTO);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<EnrichedProfileDTO> getEnrichedProfileByCurp(String curp) {
+        Optional<User> userOpt = userRepository.findByCurp(curp);
+        if (userOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        User user = userOpt.get();
+        Set<String> roles = user.getRoles().stream()
+                .map(role -> role.getName())
+                .collect(Collectors.toSet());
+
+        Optional<UserProfile> profileOpt = userProfileRepository.findByCurp(curp);
+        UserProfileDTO profileDTO = profileOpt.map(this::toDTO).orElse(null);
+
+        EnrichedProfileDTO enrichedProfile;
+        if (profileDTO != null) {
+            enrichedProfile = EnrichedProfileDTO.fromUserProfile(profileDTO, roles);
+        } else {
+            enrichedProfile = EnrichedProfileDTO.builder()
+                    .curp(curp)
+                    .roles(roles)
+                    .build();
+        }
+
+        if (roles.contains("STUDENT")) {
+            studentRepository.findByCurpAndIsDeletedFalse(curp)
+                    .ifPresent(enrichedProfile::enrichWithStudent);
+        }
+        if (roles.contains("TEACHER")) {
+            teacherRepository.findByCurpAndIsDeletedFalse(curp)
+                    .ifPresent(enrichedProfile::enrichWithTeacher);
+        }
+
+        return Optional.of(enrichedProfile);
+    }
+
+    @Transactional(readOnly = true)
+    public Object getAcademicHistory(String userId) {
+        Optional<User> userOpt = userRepository.findById(java.util.UUID.fromString(userId));
+        if (userOpt.isEmpty()) {
+            return null;
+        }
+
+        User user = userOpt.get();
+        // TODO: Implement academic history retrieval from enrollment, grades, etc.
+        return java.util.Map.of(
+                "userId", userId,
+                "message", "Academic history endpoint - to be implemented"
+        );
+    }
+
     @Transactional
     public UserProfileDTO createOrUpdateProfile(String userId, UpdateProfileRequest request) {
         User user = userRepository.findById(java.util.UUID.fromString(userId))
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        // Validate CURP format if provided
+        if (request.getCurp() != null && !isValidCurp(request.getCurp())) {
+            throw new IllegalArgumentException("CURP inválido. Debe tener 18 caracteres y formato válido");
+        }
+
+        // Validate RFC format if provided
+        if (request.getRfc() != null && !isValidRfc(request.getRfc())) {
+            throw new IllegalArgumentException("RFC inválido. Debe tener 13 caracteres y formato válido");
+        }
 
         UserProfile profile = userProfileRepository.findByUserId(user.getId())
                 .orElse(new UserProfile());
@@ -112,7 +174,52 @@ public class UserProfileService {
         if (request.getProfilePictureUrl() != null) profile.setProfilePictureUrl(request.getProfilePictureUrl());
 
         profile = userProfileRepository.save(profile);
+
+        // Sync with Student/Teacher entities if user has those roles
+        syncWithAcademicEntities(user, profile);
+
         return toDTO(profile);
+    }
+
+    private void syncWithAcademicEntities(User user, UserProfile profile) {
+        Set<String> roles = user.getRoles().stream()
+                .map(role -> role.getName())
+                .collect(Collectors.toSet());
+
+        if (roles.contains("STUDENT") && profile.getCurp() != null) {
+            studentRepository.findByCurpAndIsDeletedFalse(profile.getCurp())
+                    .ifPresent(student -> {
+                        student.setFirstName(profile.getFirstName());
+                        student.setLastName(profile.getLastName());
+                        student.setPhone(profile.getPhone());
+                        student.setInstitutionalEmail(profile.getInstitutionalEmail());
+                        student.setBirthDate(profile.getBirthDate());
+                        student.setGender(profile.getGender());
+                        studentRepository.save(student);
+                        log.info("Synced profile to student for curp: {}", profile.getCurp());
+                    });
+        }
+
+        if (roles.contains("TEACHER") && profile.getCurp() != null) {
+            teacherRepository.findByCurpAndIsDeletedFalse(profile.getCurp())
+                    .ifPresent(teacher -> {
+                        teacher.setFirstName(profile.getFirstName());
+                        teacher.setLastName(profile.getLastName());
+                        teacher.setRfc(profile.getRfc());
+                        teacher.setPhone(profile.getPhone());
+                        teacher.setInstitutionalEmail(profile.getInstitutionalEmail());
+                        teacherRepository.save(teacher);
+                        log.info("Synced profile to teacher for curp: {}", profile.getCurp());
+                    });
+        }
+    }
+
+    private boolean isValidCurp(String curp) {
+        return curp != null && curp.matches("^[A-Z]{4}[0-9]{6}[A-Z]{6}[A-Z0-9]{2}$");
+    }
+
+    private boolean isValidRfc(String rfc) {
+        return rfc != null && rfc.matches("^[A-Z]{3,4}[0-9]{6}[A-Z0-9]{3}$");
     }
 
     @Transactional
