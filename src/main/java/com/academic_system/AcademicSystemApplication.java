@@ -1,8 +1,10 @@
 package com.academic_system;
 
+import com.academic_system.service.ProfileMigrationService;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
@@ -32,7 +34,15 @@ public class AcademicSystemApplication {
 		System.setProperty("JWT_ACCESS_TOKEN_EXPIRATION", dotenv.get("JWT_ACCESS_TOKEN_EXPIRATION", "900000"));
 		System.setProperty("JWT_REFRESH_TOKEN_EXPIRATION", dotenv.get("JWT_REFRESH_TOKEN_EXPIRATION", "604800000"));
 		
-		SpringApplication.run(AcademicSystemApplication.class, args);
+		ConfigurableApplicationContext context = SpringApplication.run(AcademicSystemApplication.class, args);
+		
+		// Ejecutar migración de perfiles al iniciar
+		try {
+			ProfileMigrationService migrationService = context.getBean(ProfileMigrationService.class);
+			migrationService.migrateExistingProfiles();
+		} catch (Exception e) {
+			System.err.println("Error during profile migration: " + e.getMessage());
+		}
 	}
 
 }

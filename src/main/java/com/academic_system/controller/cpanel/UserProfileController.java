@@ -5,6 +5,7 @@ import com.academic_system.dto.cpanel.EnrichedProfileDTO;
 import com.academic_system.dto.cpanel.UpdateProfileRequest;
 import com.academic_system.dto.cpanel.UserProfileDTO;
 import com.academic_system.security.CustomUserDetails;
+import com.academic_system.service.ProfileMigrationService;
 import com.academic_system.service.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
+    private final ProfileMigrationService profileMigrationService;
 
     @GetMapping("/profile/me")
     public ResponseEntity<ApiResponse<EnrichedProfileDTO>> getMyProfile(
@@ -93,5 +95,16 @@ public class UserProfileController {
             @AuthenticationPrincipal CustomUserDetails currentUser) {
         Object history = userProfileService.getAcademicHistory(currentUser.getUserId().toString());
         return ResponseEntity.ok(ApiResponse.success(history));
+    }
+
+    @PostMapping("/admin/migrate-profiles")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> migrateProfiles() {
+        try {
+            profileMigrationService.migrateExistingProfiles();
+            return ResponseEntity.ok(ApiResponse.success("Migración de perfiles completada exitosamente"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error("Error en migración: " + e.getMessage()));
+        }
     }
 }
