@@ -103,10 +103,71 @@ A user can have multiple roles (e.g., both `STUDENT` and `TEACHER`). In this cas
 ### UserProfileService
 
 - `getEnrichedProfileByUserId(String userId)` - Get enriched profile with academic data based on roles and CURP
+- `getEnrichedProfileByCurp(String curp)` - Get enriched profile by CURP (for admins)
 - `getProfileByUserId(String userId)` - Get basic profile by user ID
 - `getProfileByCurp(String curp)` - Get basic profile by CURP
 - `createOrUpdateProfile(String userId, UpdateProfileRequest)` - Create or update profile
 - `deleteProfile(String userId)` - Soft-delete profile
+- `getAcademicHistory(String userId)` - Get user's academic history
+
+### ProfileMigrationService
+
+- `migrateExistingProfiles()` - Migrates data from `student`/`teacher` to `user_profile`
+
+## Profile Migration
+
+### Automatic Migration
+The system automatically migrates existing `student` and `teacher` data to `user_profile` on application startup. This ensures data consistency across the system.
+
+**What happens during migration:**
+- Reads all active students and teachers with `user_id` set
+- Creates `UserProfile` records linked to the corresponding `app_user`
+- Copies personal data: `first_name`, `last_name`, `curp`, `rfc`, `phone`, `email`, etc.
+- Skips users who already have a profile (idempotent operation)
+
+**Logs to watch for:**
+```
+INFO  c.a.s.ProfileMigrationService - Starting profile migration...
+INFO  c.a.s.ProfileMigrationService - Migrated student profile for user_id: xxx
+INFO  c.a.s.ProfileMigrationService - Profile migration completed. Students migrated: X, Teachers migrated: Y
+```
+
+### Manual Migration (Admin)
+Admins can trigger migration manually via:
+
+```
+POST /api/admin/migrate-profiles
+Header: Authorization: Bearer <admin_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Migración de perfiles completada exitosamente"
+}
+```
+
+## Data Synchronization
+
+When a `UserProfile` is updated, the system automatically syncs the changes to the corresponding `Student` or `Teacher` entity based on the user's roles:
+
+- **STUDENT role**: Syncs `first_name`, `last_name`, `phone`, `institutional_email`, `birth_date`, `gender`
+- **TEACHER role**: Syncs `first_name`, `last_name`, `rfc`, `phone`, `institutional_email`
+
+This ensures backward compatibility with existing code that reads from `student`/`teacher` tables.
+
+## Validations
+
+### CURP Validation
+- Format: 18 characters
+- Pattern: `AAAA######AAAAAAXX` (4 letters + 6 digits + 6 letters/digits + 2 digits/letters)
+- Validated on profile update
+
+### RFC Validation
+- Format: 13 characters
+- Pattern: `AAA######AAA` (3-4 letters + 6 digits + 3 alphanumeric)
+- Validated on profile update
 
 ## Notes
 
@@ -117,3 +178,81 @@ A user can have multiple roles (e.g., both `STUDENT` and `TEACHER`). In this cas
 - Academic data enrichment works by matching the profile's CURP with Student/Teacher records
 - Users can only update their own profile via `/api/profile/me` endpoints
 - Admin users can update any profile via `/api/users/{id}/profile` endpoints
+- Migration is idempotent (can run multiple times without duplicating data)
+
+## Frontend Integration Guide
+
+### 1. Get Current User's Profile
+```javascript
+// Fetch enriched profile with academic data
+const response = await fetch('/api/profile/me', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+const data = await response.json();
+// data.data contains EnrichedProfileDTO
+```
+
+### 2. Update Profile
+```javascript
+const response = await fetch('/api/profile/me', {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    firstName: "Juan",
+    lastName: "Perez",
+    curp: "PERJ800101HDFXXX",
+    rfc: "PERJ800101XXX",
+    phone: "5551234567"
+  })
+});
+```
+
+### 3. Upload Profile Picture
+```javascript
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+
+const response = await fetch('/api/profile/me/picture', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: formData
+});
+```
+
+### 4. Search Profile by CURP (Admin)
+```javascript
+const response = await fetch(`/api/profile/search?curp=PERJ800101HDFXXX`, {
+  headers: {
+    'Authorization': `Bearer ${adminToken}`
+  }
+});
+```
+
+### 5. Sample Response (EnrichedProfileDTO)
+```json
+{
+  "success": true,
+  "data": {
+    "firstName": "Juan",
+    "lastName": "Perez",
+    "curp": "PERJ800101HDFXXX",
+    "roles": ["STUDENT", "TEACHER"],
+    "studentInfo": {
+      "enrollmentNumber": "ENR001",
+      "enrollmentDate": "2024-01-15",
+      "generationId": "uuid-here"
+    },
+    "teacherInfo": {
+      "employeeNumber": "EMP001",
+      "rfc": "PERJ800101XXX"
+    }
+  }
+}
+```
