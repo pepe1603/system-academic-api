@@ -60,14 +60,14 @@ Content-Type: application/json
 }
 ```
 
-### Upload Profile Picture
+### Update Profile Picture (via URL)
+Include `profilePictureUrl` in the Update Profile request:
+```json
+{
+  "profilePictureUrl": "https://example.com/photos/myphoto.jpg"
+}
 ```
-POST /api/profile/me/picture
-Content-Type: multipart/form-data
-```
-**Auth:** Any authenticated user (can only upload their own picture)  
-**Param:** `file` (MultipartFile)  
-**Response:** Updated `UserProfileDTO` with new `profilePictureUrl`
+**Note:** The frontend is responsible for uploading the image and providing the URL. The API only stores the URL.
 
 ### Get Any User's Enriched Profile (Admin)
 ```
