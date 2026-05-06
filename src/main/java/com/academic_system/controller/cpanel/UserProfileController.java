@@ -13,8 +13,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
@@ -57,6 +63,25 @@ public class UserProfileController {
         return ResponseEntity.ok(ApiResponse.success("Perfil actualizado", profile));
     }
 
+    @PostMapping("/profile/me/picture")
+    public ResponseEntity<ApiResponse<UserProfileDTO>> uploadProfilePicture(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        String uploadDir = "uploads/profile-pictures";
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+        Path filePath = uploadPath.resolve(fileName);
+        Files.copy(file.getInputStream(), filePath);
+        String fileUrl = "/" + uploadDir + "/" + fileName;
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setProfilePictureUrl(fileUrl);
+        UserProfileDTO profile = userProfileService.createOrUpdateProfile(currentUser.getUserId().toString(), request);
+        return ResponseEntity.ok(ApiResponse.success("Foto de perfil actualizada", profile));
+    }
+
     @GetMapping("/profile/search")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<EnrichedProfileDTO>> searchProfileByCurp(@RequestParam String curp) {
@@ -74,10 +99,10 @@ public class UserProfileController {
 
     @PostMapping("/admin/migrate-profiles")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Object>> migrateProfiles() {
+    public ResponseEntity<ApiResponse<String>> migrateProfiles() {
         try {
-            Object result = profileMigrationService.migrateExistingProfiles();
-            return ResponseEntity.ok(ApiResponse.success(result));
+            profileMigrationService.migrateExistingProfiles();
+            return ResponseEntity.ok(ApiResponse.success("Migración de perfiles completada exitosamente"));
         } catch (Exception e) {
             return ResponseEntity.ok(ApiResponse.error("Error en migración: " + e.getMessage()));
         }

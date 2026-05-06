@@ -13,9 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -30,10 +28,9 @@ public class ProfileMigrationService {
     /**
      * Migrate existing student and teacher data to UserProfile based on user_id.
      * This should be run once during deployment.
-     * Returns a map with migration results for API response.
      */
     @Transactional
-    public Map<String, Object> migrateExistingProfiles() {
+    public void migrateExistingProfiles() {
         log.info("Starting profile migration...");
         
         int studentMigrated = migrateStudents();
@@ -41,15 +38,6 @@ public class ProfileMigrationService {
         
         log.info("Profile migration completed. Students migrated: {}, Teachers migrated: {}", 
                 studentMigrated, teacherMigrated);
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("studentsMigrated", studentMigrated);
-        result.put("teachersMigrated", teacherMigrated);
-        result.put("total", studentMigrated + teacherMigrated);
-        result.put("message", "Migración completada. Se migraron " + 
-                (studentMigrated + teacherMigrated) + " perfiles en total.");
-        
-        return result;
     }
 
     private int migrateStudents() {
