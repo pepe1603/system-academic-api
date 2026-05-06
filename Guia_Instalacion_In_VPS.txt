@@ -1,0 +1,36 @@
+Explicación de la Migración
+1. ¿Se afecta el schema o se elimina algo?
+NO. La migración es 100% segura:
+- ✅ No elimina nada - Solo LEE de student y teacher
+- ✅ No borra tablas - Solo ESCRIBE en user_profile
+- ✅ No duplica - Verifica si el perfil ya existe antes de crearlo
+- ✅ Es idempotente - Puedes ejecutarla múltiples veces sin daño
+Qué hace exactamente:
+// Lee estudiantes
+studentRepository.findAll();
+// Verifica si ya tiene perfil
+userProfileRepository.findByUserId(student.getUserId());
+// Solo crea si NO existe
+if (!profileExists) {
+    userProfileRepository.save(profile);
+}
+2. Iniciar desde cero en tu VPS
+Orden correcto:
+# 1. Ejecutar scripts SQL en orden (en PostgreSQL)
+psql -U tu_usuario -d academic_system -f db/postgresql/01_schema_academic.sql
+psql -U tu_usuario -d academic_system -f db/postgresql/02_logic.sql
+psql -U tu_usuario -d academic_system -f db/postgresql/03_seed.sql
+psql -U tu_usuario -d academic_system -f db/postgresql/04_security.sql
+psql -U tu_usuario -d academic_system -f db/postgresql/05_registration.sql
+psql -U tu_usuario -d academic_system -f db/postgresql/06_user_profile.sql
+# 2. Iniciar la API
+./gradlew bootRun
+Qué pasa al iniciar:
+1. Hibernate ve que las tablas ya existen (por los scripts)
+2. ddl-auto: update NO intenta crear tablas (ya existen)
+3. Se ejecuta migrateExistingProfiles() automáticamente
+4. Si hay datos en student/teacher con user_id, se crean los perfiles
+Nota importante:
+- El script 06_user_profile.sql ya crea la tabla vacía
+- Al iniciar la API, la migración llenará esa tabla con datos existentes
+- Si ejecutas los scripts pero NO hay datos aún en student/teacher, la migración no hará nada (pero tampoco fallará)
