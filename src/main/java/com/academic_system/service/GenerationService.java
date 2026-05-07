@@ -34,6 +34,13 @@ public class GenerationService {
                 .map(this::toDTO);
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<GenerationDTO> getDeletedGenerations(Pageable pageable) {
+        return generationRepository.findAllByIsDeletedTrue(pageable)
+                .map(this::toDTO)
+                .getContent();
+    }
+
     @Transactional
     public GenerationDTO createGeneration(CreateGenerationRequest request) {
         if (generationRepository.existsByNameAndIsDeletedFalse(request.getName())) {

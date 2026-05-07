@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -58,5 +59,15 @@ public class GenerationController {
     public ResponseEntity<ApiResponse<Void>> deleteGeneration(@PathVariable String id) {
         generationService.deleteGeneration(id);
         return ResponseEntity.ok(ApiResponse.success("Generación eliminada", null));
+    }
+
+    @GetMapping("/deleted")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<GenerationDTO>>> getDeletedGenerations(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        var result = generationService.getDeletedGenerations(pageable);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }
