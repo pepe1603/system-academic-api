@@ -9,7 +9,7 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - .env
+      - .env.develop
     environment:
       - SPRING_PROFILES_ACTIVE=default
       - SPRING_DATASOURCE_URL=${URL_DATABASE_POSTGRESQL}

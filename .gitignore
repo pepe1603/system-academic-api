@@ -37,8 +37,10 @@ out/
 .vscode/
 
 ### Environment ###
-.env
+.env.develop
+.env.*
 .env.local
 .env.*.local
 env_temp.bat
 env_temp.ps1
+env_temp.sh

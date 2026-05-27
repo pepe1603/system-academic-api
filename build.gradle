@@ -32,7 +32,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	
-	// Dotenv for loading .env files
+	// Dotenv for loading .env.develop files
 	implementation 'io.github.cdimascio:dotenv-java:3.0.2'
 	
 	// Rate Limiting (usando Redis)
