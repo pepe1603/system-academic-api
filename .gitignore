@@ -45,3 +45,15 @@ out/
 env_temp.bat
 env_temp.ps1
 env_temp.sh
+
+
+# OpenCode local context
+./opencode/
+# OpenCode
+/.opencode/
+
+# Temporary logs
+*.log
+
+# Database documentation (local)
+db/docs/
