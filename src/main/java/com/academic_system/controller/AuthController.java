@@ -69,7 +69,7 @@ public class AuthController {
             otpService.markOtpVerified(purpose, request.getEmail());
             return ResponseEntity.ok(ApiResponse.success("Código verificado correctamente", null));
         } else if (result.isLocked()) {
-            return ResponseEntity.status(429)
+            return ResponseEntity.status(423)
                     .body(ApiResponse.error(result.getErrorMessage() + ". Intenta en " + result.getRemainingMinutes() + " minutos"));
         } else {
             return ResponseEntity.badRequest()

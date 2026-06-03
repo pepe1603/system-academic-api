@@ -1,5 +1,8 @@
 package com.academic_system.controller;
 
+import com.academic_system.dto.auth.ApiResponse;
+import com.academic_system.dto.system.HealthDTO;
+import com.academic_system.dto.system.MonitorDTO;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,18 +27,17 @@ public class HealthController {
     }
 
     @GetMapping("/health")
-    public ResponseEntity<Map<String, Object>> health() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "UP");
-        response.put("timestamp", Instant.now().toString());
-        return ResponseEntity.ok(response);
+    public ResponseEntity<ApiResponse<HealthDTO>> health() {
+        HealthDTO healthDTO = HealthDTO.builder()
+                .status("UP")
+                .timestamp(Instant.now().toString())
+                .build();
+        return ResponseEntity.ok(ApiResponse.success("Servicio saludable", healthDTO));
     }
 
     @GetMapping("/monitor")
-    public ResponseEntity<Map<String, Object>> healthWithDetails() {
-        Map<String, Object> response = new HashMap<>();
+    public ResponseEntity<ApiResponse<MonitorDTO>> healthWithDetails() {
         Map<String, String> services = new HashMap<>();
-
         boolean allHealthy = true;
 
         try {
@@ -54,10 +56,16 @@ public class HealthController {
             allHealthy = false;
         }
 
-        response.put("status", allHealthy ? "UP" : "DEGRADED");
-        response.put("timestamp", Instant.now().toString());
-        response.put("services", services);
+        MonitorDTO monitorDTO = MonitorDTO.builder()
+                .status(allHealthy ? "UP" : "DEGRADED")
+                .timestamp(Instant.now().toString())
+                .services(services)
+                .build();
 
-        return allHealthy ? ResponseEntity.ok(response) : ResponseEntity.status(503).body(response);
+        String message = allHealthy ? "Todos los servicios operativos" : "Algunos servicios degradados";
+        
+        return allHealthy 
+                ? ResponseEntity.ok(ApiResponse.success(message, monitorDTO)) 
+                : ResponseEntity.status(503).body(ApiResponse.error(message));
     }
 }
