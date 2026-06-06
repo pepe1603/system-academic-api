@@ -46,6 +46,8 @@ env_temp.bat
 env_temp.ps1
 env_temp.sh
 
+env_temp.*
+
 
 # OpenCode local context
 ./opencode/
