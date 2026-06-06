@@ -2,6 +2,9 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,31 +65,31 @@ public class CertificateService {
     @Transactional
     public CertificateDTO createCertificate(CreateCertificateRequest request) {
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Estudiante no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estudiante no encontrado", "Student", "id"));
 
         if (request.getGenerationId() != null) {
             generationRepository.findById(request.getGenerationId())
-                    .orElseThrow(() -> new IllegalArgumentException("Generación no encontrada"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Generación no encontrada", "Generation", "id"));
         }
 
         String type = request.getCertificateType().toUpperCase();
         if (!VALID_TYPES.contains(type)) {
-            throw new IllegalArgumentException("Tipo de certificado inválido. Valores: PARTIAL, TOTAL, TITLE, DIPLOMA, CONSTANCIA");
+            throw new ValidationException("Tipo de certificado inválido. Valores: PARTIAL, TOTAL, TITLE, DIPLOMA, CONSTANCIA", "Certificate", "certificateType");
         }
 
         if (request.getOfficialFolio() != null
                 && certificateRepository.existsByOfficialFolioAndIsDeletedFalse(request.getOfficialFolio())) {
-            throw new IllegalArgumentException("El folio oficial ya existe");
+            throw new DuplicateResourceException("El folio oficial ya existe", "Certificate", "officialFolio");
         }
 
         if (request.getDirectorSigner() != null) {
             teacherRepository.findById(request.getDirectorSigner())
-                    .orElseThrow(() -> new IllegalArgumentException("Docente firmante (director) no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Docente firmante (director) no encontrado", "Teacher", "id"));
         }
 
         if (request.getSecretarySigner() != null) {
             teacherRepository.findById(request.getSecretarySigner())
-                    .orElseThrow(() -> new IllegalArgumentException("Docente firmante (secretario) no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Docente firmante (secretario) no encontrado", "Teacher", "id"));
         }
 
         Certificate certificate = Certificate.builder()
@@ -117,19 +120,19 @@ public class CertificateService {
     @Transactional
     public CertificateDTO updateCertificate(String id, UpdateCertificateRequest request) {
         Certificate certificate = certificateRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Certificado no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Certificado no encontrado", "Certificate", "id"));
 
         if (request.getCertificateType() != null) {
             String newType = request.getCertificateType().toUpperCase();
             if (!VALID_TYPES.contains(newType)) {
-                throw new IllegalArgumentException("Tipo de certificado inválido");
+                throw new ValidationException("Tipo de certificado inválido", "Certificate", "certificateType");
             }
             certificate.setCertificateType(newType);
         }
         if (request.getOfficialFolio() != null) {
             if (!request.getOfficialFolio().equals(certificate.getOfficialFolio())
                     && certificateRepository.existsByOfficialFolioAndIsDeletedFalse(request.getOfficialFolio())) {
-                throw new IllegalArgumentException("El folio oficial ya está registrado por otro certificado");
+                throw new DuplicateResourceException("El folio oficial ya está registrado por otro certificado", "Certificate", "officialFolio");
             }
             certificate.setOfficialFolio(request.getOfficialFolio());
         }
@@ -143,18 +146,18 @@ public class CertificateService {
         if (request.getStatus() != null) {
             String newStatus = request.getStatus().toUpperCase();
             if (!VALID_STATUSES.contains(newStatus)) {
-                throw new IllegalArgumentException("Estado inválido. Valores: REQUESTED, IN_PROCESS, ISSUED, DELIVERED, CANCELLED");
+                throw new ValidationException("Estado inválido. Valores: REQUESTED, IN_PROCESS, ISSUED, DELIVERED, CANCELLED", "Certificate", "status");
             }
             certificate.setStatus(newStatus);
         }
         if (request.getDirectorSigner() != null) {
             teacherRepository.findById(request.getDirectorSigner())
-                    .orElseThrow(() -> new IllegalArgumentException("Docente firmante (director) no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Docente firmante (director) no encontrado", "Teacher", "id"));
             certificate.setDirectorSigner(request.getDirectorSigner());
         }
         if (request.getSecretarySigner() != null) {
             teacherRepository.findById(request.getSecretarySigner())
-                    .orElseThrow(() -> new IllegalArgumentException("Docente firmante (secretario) no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Docente firmante (secretario) no encontrado", "Teacher", "id"));
             certificate.setSecretarySigner(request.getSecretarySigner());
         }
         if (request.getRecordNumber() != null) certificate.setRecordNumber(request.getRecordNumber());
@@ -170,7 +173,7 @@ public class CertificateService {
     @Transactional
     public void deleteCertificate(String id) {
         Certificate certificate = certificateRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Certificado no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Certificado no encontrado", "Certificate", "id"));
         certificate.setIsDeleted(true);
         certificateRepository.save(certificate);
         log.info("Deleted certificate: {}", id);

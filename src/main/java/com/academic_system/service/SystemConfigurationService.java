@@ -2,6 +2,9 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.SystemConfiguration;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.SystemConfigurationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,12 +56,12 @@ public class SystemConfigurationService {
     public SystemConfigurationDTO createConfiguration(CreateSystemConfigurationRequest request) {
         String key = request.getConfigKey().toUpperCase().replace(" ", "_");
         if (systemConfigurationRepository.existsByConfigKeyAndIsDeletedFalse(key)) {
-            throw new IllegalArgumentException("La clave de configuración ya existe: " + key);
+            throw new DuplicateResourceException("La clave de configuración ya existe: " + key, "SystemConfiguration", "configKey");
         }
 
         String dataType = request.getDataType() != null ? request.getDataType().toUpperCase() : "STRING";
         if (!VALID_DATA_TYPES.contains(dataType)) {
-            throw new IllegalArgumentException("Tipo de dato inválido. Valores: STRING, NUMBER, BOOLEAN, JSON");
+            throw new ValidationException("Tipo de dato inválido. Valores: STRING, NUMBER, BOOLEAN, JSON", "SystemConfiguration", "dataType");
         }
 
         SystemConfiguration config = SystemConfiguration.builder()
@@ -77,13 +80,13 @@ public class SystemConfigurationService {
     @Transactional
     public SystemConfigurationDTO updateConfiguration(String id, UpdateSystemConfigurationRequest request) {
         SystemConfiguration config = systemConfigurationRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Configuración no encontrada", "SystemConfiguration", "id"));
 
         if (request.getConfigValue() != null) config.setConfigValue(request.getConfigValue());
         if (request.getDescription() != null) config.setDescription(request.getDescription());
         if (request.getDataType() != null) {
             String newType = request.getDataType().toUpperCase();
-            if (!VALID_DATA_TYPES.contains(newType)) throw new IllegalArgumentException("Tipo de dato inválido");
+            if (!VALID_DATA_TYPES.contains(newType)) throw new ValidationException("Tipo de dato inválido", "SystemConfiguration", "dataType");
             config.setDataType(newType);
         }
         if (request.getModule() != null) config.setModule(request.getModule());
@@ -97,7 +100,7 @@ public class SystemConfigurationService {
     @Transactional
     public void deleteConfiguration(String id) {
         SystemConfiguration config = systemConfigurationRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Configuración no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Configuración no encontrada", "SystemConfiguration", "id"));
         config.setIsDeleted(true);
         systemConfigurationRepository.save(config);
         log.info("Deleted configuration: {}", id);

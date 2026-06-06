@@ -8,6 +8,9 @@ import com.academic_system.entity.postgres.Role;
 import com.academic_system.entity.postgres.Student;
 import com.academic_system.entity.postgres.Teacher;
 import com.academic_system.entity.postgres.User;
+import com.academic_system.exception.BusinessRuleException;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,14 +60,14 @@ public class UserService {
     public UserDTO getUserById(String id) {
         UUID uuid = UUID.fromString(id);
         User user = userRepository.findById(uuid)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
         return toDTO(user);
     }
 
     @Transactional("postgresTransactionManager")
     public UserDTO createUser(CreateUserRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalStateException("El email ya está registrado");
+            throw new DuplicateResourceException("El email ya está registrado", "User", "email");
         }
 
         boolean hasCurp = request.getCurp() != null && !request.getCurp().isEmpty();
@@ -140,7 +143,7 @@ public class UserService {
     public UserDTO updateUser(String id, Boolean isActive, Set<String> roles, Boolean mustChangePassword) {
         UUID uuid = UUID.fromString(id);
         User user = userRepository.findById(uuid)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         if (isActive != null) {
             user.setIsActive(isActive);
@@ -164,12 +167,12 @@ public class UserService {
     @Transactional("postgresTransactionManager")
     public void deleteUser(String id, String currentUserId) {
         if (id.equals(currentUserId)) {
-            throw new IllegalStateException("No puede eliminar su propia cuenta");
+            throw new BusinessRuleException("No puede eliminar su propia cuenta", "User", "id");
         }
 
         UUID uuid = UUID.fromString(id);
         User user = userRepository.findById(uuid)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         user.setIsActive(false);
         user.setIsDeleted(true);
@@ -180,7 +183,7 @@ public class UserService {
     public ApiResponse<Void> revokeAllSessions(String id) {
         UUID uuid = UUID.fromString(id);
         User user = userRepository.findById(uuid)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         userSessionRepository.invalidateAllSessionsForUser(user.getId());
         return ApiResponse.success("Sesiones invalidadas", null);
@@ -190,7 +193,7 @@ public class UserService {
     public ApiResponse<Void> banUser(String id) {
         UUID uuid = UUID.fromString(id);
         User user = userRepository.findById(uuid)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         user.setIsActive(false);
         userRepository.save(user);
@@ -205,7 +208,7 @@ public class UserService {
                 .map(role -> role.getPermissions().stream()
                         .map(Permission::getCode)
                         .collect(Collectors.toSet()))
-                .orElseThrow(() -> new IllegalArgumentException("Rol no encontrado: " + roleName));
+                .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado: " + roleName, "Role", "name"));
     }
 
     private void validateRolesAndCurp(CreateUserRequest request, boolean hasCurp) {
@@ -217,13 +220,13 @@ public class UserService {
 
         if (hasCurp) {
             if (roles.size() > MAX_ROLES_WITH_CURP) {
-                throw new IllegalStateException(
-                        "Los usuarios con registro académico pueden tener máximo " + MAX_ROLES_WITH_CURP + " roles");
+                throw new BusinessRuleException(
+                        "Los usuarios con registro académico pueden tener máximo " + MAX_ROLES_WITH_CURP + " roles", "User", "roles");
             }
         } else {
             if (roles.size() > MAX_ROLES_WITHOUT_CURP) {
-                throw new IllegalStateException(
-                        "Los usuarios del sistema pueden tener máximo " + MAX_ROLES_WITHOUT_CURP + " rol");
+                throw new BusinessRuleException(
+                        "Los usuarios del sistema pueden tener máximo " + MAX_ROLES_WITHOUT_CURP + " rol", "User", "roles");
             }
         }
 
@@ -231,18 +234,18 @@ public class UserService {
         boolean anyRoleWithoutCurp = roles.stream().anyMatch(ROLES_WITHOUT_CURP::contains);
 
         if (anyRoleRequiresCurp && anyRoleWithoutCurp) {
-            throw new IllegalStateException(
-                    "No se puede asignar roles que requieren CURP con roles que no lo requieren");
+            throw new BusinessRuleException(
+                    "No se puede asignar roles que requieren CURP con roles que no lo requieren", "User", "roles");
         }
 
         if (anyRoleRequiresCurp && !hasCurp) {
-            throw new IllegalStateException(
-                    "El CURP es requerido para los roles: " + ROLES_REQUIRING_CURP);
+            throw new BusinessRuleException(
+                    "El CURP es requerido para los roles: " + ROLES_REQUIRING_CURP, "User", "curp");
         }
 
         if (anyRoleWithoutCurp && hasCurp) {
-            throw new IllegalStateException(
-                    "Los roles " + ROLES_WITHOUT_CURP + " no requieren CURP");
+            throw new BusinessRuleException(
+                    "Los roles " + ROLES_WITHOUT_CURP + " no requieren CURP", "User", "roles");
         }
 
         if (anyRoleRequiresCurp && hasCurp) {
@@ -250,8 +253,8 @@ public class UserService {
             boolean curpFound = studentRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(curp.toUpperCase()).isPresent() ||
                            teacherRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(curp.toUpperCase()).isPresent();
             if (!curpFound) {
-                throw new IllegalStateException(
-                        "El CURP no corresponde a un registro académico activo");
+                throw new BusinessRuleException(
+                        "El CURP no corresponde a un registro académico activo", "User", "curp");
             }
         }
     }

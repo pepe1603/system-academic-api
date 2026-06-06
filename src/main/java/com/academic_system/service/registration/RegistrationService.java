@@ -2,6 +2,10 @@ package com.academic_system.service.registration;
 
 import com.academic_system.dto.registration.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.BusinessRuleException;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import com.academic_system.service.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -37,18 +41,18 @@ public class RegistrationService {
         String email = request.getEmail().toLowerCase();
 
         if (registrationRequestRepository.existsByCurp(curp)) {
-            throw new IllegalStateException("Ya existe una solicitud de registro con este CURP");
+            throw new DuplicateResourceException("Ya existe una solicitud de registro con este CURP", "RegistrationRequest", "curp");
         }
 
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalStateException("El email ya está registrado en el sistema");
+            throw new DuplicateResourceException("El email ya está registrado en el sistema", "User", "email");
         }
 
         Optional<Student> studentOpt = studentRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(curp);
         Optional<Teacher> teacherOpt = teacherRepository.findByCurpAndIsActiveTrueAndIsDeletedFalse(curp);
 
         if (studentOpt.isEmpty() && teacherOpt.isEmpty()) {
-            throw new IllegalStateException("No se encontró registro académico activo con este CURP");
+            throw new ResourceNotFoundException("No se encontró registro académico activo con este CURP", "Student", "curp");
         }
 
         Student student = studentOpt.orElse(null);
@@ -84,20 +88,20 @@ public class RegistrationService {
         String curp = request.getCurp().toUpperCase();
 
         RegistrationRequest regRequest = registrationRequestRepository.findByCurp(curp)
-                .orElseThrow(() -> new IllegalArgumentException("Solicitud no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada", "RegistrationRequest", "curp"));
 
         if (regRequest.getStatus() != RegistrationRequest.RegistrationStatus.PENDING) {
-            throw new IllegalStateException("La solicitud ya fue procesada");
+            throw new BusinessRuleException("La solicitud ya fue procesada", "RegistrationRequest", "status");
         }
 
         if (LocalDateTime.now().isAfter(regRequest.getOtpExpiresAt())) {
             regRequest.setStatus(RegistrationRequest.RegistrationStatus.EXPIRED);
             registrationRequestRepository.save(regRequest);
-            throw new IllegalStateException("El código ha expirado. Solicite uno nuevo.");
+            throw new BusinessRuleException("El código ha expirado. Solicite uno nuevo.", "RegistrationRequest", "otpExpiresAt");
         }
 
         if (!regRequest.getOtpCode().equals(request.getOtp())) {
-            throw new IllegalArgumentException("Código incorrecto");
+            throw new ValidationException("Código incorrecto", "RegistrationRequest", "otp");
         }
 
         String tempPassword = generateTempPassword();
@@ -171,17 +175,17 @@ public class RegistrationService {
         UUID userUuid = UUID.fromString(userId);
         
         User user = userRepository.findById(userUuid)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         EmailVerification emailVerif = emailVerificationRepository.findByUserIdAndIsVerifiedFalse(userUuid)
-                .orElseThrow(() -> new IllegalArgumentException("No hay verificación pendiente"));
+                .orElseThrow(() -> new ResourceNotFoundException("No hay verificación pendiente", "EmailVerification", "userId"));
 
         if (LocalDateTime.now().isAfter(emailVerif.getExpiresAt())) {
-            throw new IllegalStateException("El código ha expirado");
+            throw new BusinessRuleException("El código ha expirado", "EmailVerification", "expiresAt");
         }
 
         if (!emailVerif.getVerificationCode().equals(code)) {
-            throw new IllegalArgumentException("Código incorrecto");
+            throw new ValidationException("Código incorrecto", "EmailVerification", "code");
         }
 
         emailVerif.setIsVerified(true);

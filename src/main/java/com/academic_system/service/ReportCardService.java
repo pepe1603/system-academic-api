@@ -2,6 +2,9 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,10 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -39,57 +40,160 @@ public class ReportCardService {
 
     @Transactional(readOnly = true)
     public Page<ReportCardDTO> getAllReportCards(Pageable pageable) {
-        return reportCardRepository.findAllByIsDeletedFalse(pageable)
-                .map(this::toDTO);
+        Page<ReportCard> reportCards = reportCardRepository.findAllByIsDeletedFalse(pageable);
+
+        Set<UUID> studentIds = reportCards.getContent().stream()
+                .map(ReportCard::getStudentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> academicSemesterIds = reportCards.getContent().stream()
+                .map(ReportCard::getAcademicSemesterId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> generationIds = reportCards.getContent().stream()
+                .map(ReportCard::getGenerationId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> reportCardIds = reportCards.getContent().stream()
+                .map(ReportCard::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<UUID, Student> studentMap = studentRepository.findAllById(studentIds).stream()
+                .collect(Collectors.toMap(Student::getId, s -> s));
+
+        Map<UUID, AcademicSemester> semesterMap = academicSemesterRepository.findAllById(academicSemesterIds).stream()
+                .collect(Collectors.toMap(AcademicSemester::getId, s -> s));
+
+        Map<UUID, Generation> generationMap = generationRepository.findAllById(generationIds).stream()
+                .collect(Collectors.toMap(Generation::getId, g -> g));
+
+        Map<UUID, List<ReportCardDetail>> detailsMap = reportCardDetailRepository
+                .findByReportCardIdIn(new ArrayList<>(reportCardIds)).stream()
+                .collect(Collectors.groupingBy(ReportCardDetail::getReportCardId));
+
+        return reportCards.map(rc -> toDTO(rc, studentMap, semesterMap, generationMap, detailsMap));
     }
 
     @Transactional(readOnly = true)
     public Optional<ReportCardDTO> getReportCardById(String id) {
         return reportCardRepository.findById(UUID.fromString(id))
                 .filter(rc -> !Boolean.TRUE.equals(rc.getIsDeleted()))
-                .map(this::toDTO);
+                .map(rc -> toDTO(rc, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap()));
     }
 
     @Transactional(readOnly = true)
     public List<ReportCardDTO> getReportCardsByStudent(String studentId) {
-        return reportCardRepository.findByStudentIdAndIsDeletedFalse(UUID.fromString(studentId))
-                .stream()
-                .map(this::toDTO)
+        List<ReportCard> reportCards = reportCardRepository.findByStudentIdAndIsDeletedFalse(UUID.fromString(studentId));
+
+        Set<UUID> studentIds = reportCards.stream()
+                .map(ReportCard::getStudentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> academicSemesterIds = reportCards.stream()
+                .map(ReportCard::getAcademicSemesterId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> generationIds = reportCards.stream()
+                .map(ReportCard::getGenerationId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> reportCardIds = reportCards.stream()
+                .map(ReportCard::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<UUID, Student> studentMap = studentRepository.findAllById(studentIds).stream()
+                .collect(Collectors.toMap(Student::getId, s -> s));
+
+        Map<UUID, AcademicSemester> semesterMap = academicSemesterRepository.findAllById(academicSemesterIds).stream()
+                .collect(Collectors.toMap(AcademicSemester::getId, s -> s));
+
+        Map<UUID, Generation> generationMap = generationRepository.findAllById(generationIds).stream()
+                .collect(Collectors.toMap(Generation::getId, g -> g));
+
+        Map<UUID, List<ReportCardDetail>> detailsMap = reportCardDetailRepository
+                .findByReportCardIdIn(new ArrayList<>(reportCardIds)).stream()
+                .collect(Collectors.groupingBy(ReportCardDetail::getReportCardId));
+
+        return reportCards.stream()
+                .map(rc -> toDTO(rc, studentMap, semesterMap, generationMap, detailsMap))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<ReportCardDTO> getDeletedReportCards(Pageable pageable) {
-        return reportCardRepository.findAllByIsDeletedTrue(pageable)
-                .map(this::toDTO)
-                .getContent();
+        Page<ReportCard> reportCards = reportCardRepository.findAllByIsDeletedTrue(pageable);
+
+        Set<UUID> studentIds = reportCards.getContent().stream()
+                .map(ReportCard::getStudentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> academicSemesterIds = reportCards.getContent().stream()
+                .map(ReportCard::getAcademicSemesterId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> generationIds = reportCards.getContent().stream()
+                .map(ReportCard::getGenerationId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<UUID> reportCardIds = reportCards.getContent().stream()
+                .map(ReportCard::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<UUID, Student> studentMap = studentRepository.findAllById(studentIds).stream()
+                .collect(Collectors.toMap(Student::getId, s -> s));
+
+        Map<UUID, AcademicSemester> semesterMap = academicSemesterRepository.findAllById(academicSemesterIds).stream()
+                .collect(Collectors.toMap(AcademicSemester::getId, s -> s));
+
+        Map<UUID, Generation> generationMap = generationRepository.findAllById(generationIds).stream()
+                .collect(Collectors.toMap(Generation::getId, g -> g));
+
+        Map<UUID, List<ReportCardDetail>> detailsMap = reportCardDetailRepository
+                .findByReportCardIdIn(new ArrayList<>(reportCardIds)).stream()
+                .collect(Collectors.groupingBy(ReportCardDetail::getReportCardId));
+
+        return reportCards.getContent().stream()
+                .map(rc -> toDTO(rc, studentMap, semesterMap, generationMap, detailsMap))
+                .toList();
     }
 
     @Transactional
     public ReportCardDTO createReportCard(CreateReportCardRequest request) {
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Estudiante no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estudiante no encontrado", "Student", "id"));
 
         AcademicSemester academicSemester = academicSemesterRepository.findById(request.getAcademicSemesterId())
-                .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
 
         if (request.getGenerationId() != null) {
             generationRepository.findById(request.getGenerationId())
-                    .orElseThrow(() -> new IllegalArgumentException("Generación no encontrada"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Generación no encontrada", "Generation", "id"));
         }
 
         String type = request.getReportCardType() != null ? request.getReportCardType().toUpperCase() : "ORDINARY";
         if (!VALID_TYPES.contains(type)) {
-            throw new IllegalArgumentException("Tipo de boleta inválido. Valores: ORDINARY, EXTRAORDINARY, SPECIAL, PARTIAL_CERTIFICATE, FINAL_CERTIFICATE");
+            throw new ValidationException("Tipo de boleta inválido. Valores: ORDINARY, EXTRAORDINARY, SPECIAL, PARTIAL_CERTIFICATE, FINAL_CERTIFICATE", "ReportCard", "reportCardType");
         }
 
         String mode = request.getGenerationMode() != null ? request.getGenerationMode().toUpperCase() : "ONLINE";
         if (!VALID_MODES.contains(mode)) {
-            throw new IllegalArgumentException("Modo de generación inválido. Valores: ONLINE, OFFICIAL");
+            throw new ValidationException("Modo de generación inválido. Valores: ONLINE, OFFICIAL", "ReportCard", "generationMode");
         }
 
         if (request.getFolio() != null && reportCardRepository.existsByFolioAndIsDeletedFalse(request.getFolio())) {
-            throw new IllegalArgumentException("El folio ya existe");
+            throw new DuplicateResourceException("El folio ya existe", "ReportCard", "folio");
         }
 
         ReportCard reportCard = ReportCard.builder()
@@ -108,11 +212,11 @@ public class ReportCardService {
         List<ReportCardDetail> details = new ArrayList<>();
         for (CreateReportCardDetailRequest detailReq : request.getDetails()) {
             Course course = courseRepository.findById(detailReq.getCourseId())
-                    .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado: " + detailReq.getCourseId()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado: " + detailReq.getCourseId(), "Course", "id"));
 
             if (detailReq.getKardexId() != null) {
                 kardexRepository.findById(detailReq.getKardexId())
-                        .orElseThrow(() -> new IllegalArgumentException("Registro kardex no encontrado: " + detailReq.getKardexId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Registro kardex no encontrado: " + detailReq.getKardexId(), "Kardex", "id"));
             }
 
             ReportCardDetail detail = ReportCardDetail.builder()
@@ -166,25 +270,25 @@ public class ReportCardService {
         reportCardRepository.save(reportCard);
 
         log.info("Created report card: {} for student {} ({})", reportCard.getFolio(), student.getEnrollmentNumber(), reportCard.getId());
-        return toDTO(reportCard);
+        return toDTO(reportCard, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap());
     }
 
     @Transactional
     public ReportCardDTO updateReportCard(String id, UpdateReportCardRequest request) {
         ReportCard reportCard = reportCardRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Boleta no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Boleta no encontrada", "ReportCard", "id"));
 
         if (request.getReportCardType() != null) {
             String newType = request.getReportCardType().toUpperCase();
             if (!VALID_TYPES.contains(newType)) {
-                throw new IllegalArgumentException("Tipo de boleta inválido");
+                throw new ValidationException("Tipo de boleta inválido", "ReportCard", "reportCardType");
             }
             reportCard.setReportCardType(newType);
         }
         if (request.getGenerationMode() != null) {
             String newMode = request.getGenerationMode().toUpperCase();
             if (!VALID_MODES.contains(newMode)) {
-                throw new IllegalArgumentException("Modo de generación inválido");
+                throw new ValidationException("Modo de generación inválido", "ReportCard", "generationMode");
             }
             reportCard.setGenerationMode(newMode);
         }
@@ -198,7 +302,7 @@ public class ReportCardService {
         if (request.getStatus() != null) {
             String newStatus = request.getStatus().toUpperCase();
             if (!VALID_STATUSES.contains(newStatus)) {
-                throw new IllegalArgumentException("Estado inválido. Valores: PENDING, ISSUED, DELIVERED, ARCHIVED, CANCELLED");
+                throw new ValidationException("Estado inválido. Valores: PENDING, ISSUED, DELIVERED, ARCHIVED, CANCELLED", "ReportCard", "status");
             }
             reportCard.setStatus(newStatus);
         }
@@ -212,19 +316,21 @@ public class ReportCardService {
 
         reportCard = reportCardRepository.save(reportCard);
         log.info("Updated report card: {}", reportCard.getId());
-        return toDTO(reportCard);
+        return toDTO(reportCard, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap());
     }
 
     @Transactional
     public void deleteReportCard(String id) {
         ReportCard reportCard = reportCardRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Boleta no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Boleta no encontrada", "ReportCard", "id"));
         reportCard.setIsDeleted(true);
         reportCardRepository.save(reportCard);
         log.info("Deleted report card: {}", id);
     }
 
-    private ReportCardDTO toDTO(ReportCard reportCard) {
+    private ReportCardDTO toDTO(ReportCard reportCard, Map<UUID, Student> studentMap,
+                                Map<UUID, AcademicSemester> semesterMap, Map<UUID, Generation> generationMap,
+                                Map<UUID, List<ReportCardDetail>> detailsMap) {
         ReportCardDTO.ReportCardDTOBuilder builder = ReportCardDTO.builder()
                 .id(reportCard.getId())
                 .reportCardType(reportCard.getReportCardType())
@@ -250,23 +356,44 @@ public class ReportCardService {
                 .generationId(reportCard.getGenerationId());
 
         if (reportCard.getStudentId() != null) {
-            studentRepository.findById(reportCard.getStudentId()).ifPresent(s -> {
+            Student student = studentMap.get(reportCard.getStudentId());
+            if (student == null && studentMap.isEmpty()) {
+                student = studentRepository.findById(reportCard.getStudentId()).orElse(null);
+            }
+            if (student != null) {
+                Student s = student;
                 builder.studentName(s.getFirstName() + " " + s.getLastName());
                 builder.enrollmentNumber(s.getEnrollmentNumber());
-            });
+            }
         }
 
         if (reportCard.getAcademicSemesterId() != null) {
-            academicSemesterRepository.findById(reportCard.getAcademicSemesterId()).ifPresent(as ->
-                    builder.academicSemesterName(as.getName()));
+            AcademicSemester semester = semesterMap.get(reportCard.getAcademicSemesterId());
+            if (semester == null && semesterMap.isEmpty()) {
+                semester = academicSemesterRepository.findById(reportCard.getAcademicSemesterId()).orElse(null);
+            }
+            if (semester != null) {
+                builder.academicSemesterName(semester.getName());
+            }
         }
 
         if (reportCard.getGenerationId() != null) {
-            generationRepository.findById(reportCard.getGenerationId()).ifPresent(g ->
-                    builder.generationName(g.getName()));
+            Generation generation = generationMap.get(reportCard.getGenerationId());
+            if (generation == null && generationMap.isEmpty()) {
+                generation = generationRepository.findById(reportCard.getGenerationId()).orElse(null);
+            }
+            if (generation != null) {
+                builder.generationName(generation.getName());
+            }
         }
 
-        List<ReportCardDetail> details = reportCardDetailRepository.findByReportCardId(reportCard.getId());
+        List<ReportCardDetail> details = detailsMap.get(reportCard.getId());
+        if (details == null && detailsMap.isEmpty()) {
+            details = reportCardDetailRepository.findByReportCardId(reportCard.getId());
+        }
+        if (details == null) {
+            details = Collections.emptyList();
+        }
         builder.details(details.stream().map(this::toDetailDTO).toList());
 
         return builder.build();

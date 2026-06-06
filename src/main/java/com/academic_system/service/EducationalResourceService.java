@@ -2,6 +2,8 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,12 +58,12 @@ public class EducationalResourceService {
     public EducationalResourceDTO createResource(CreateEducationalResourceRequest request) {
         if (request.getCourseId() != null) {
             courseRepository.findById(request.getCourseId())
-                    .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
         }
 
         String type = request.getResourceType().toUpperCase();
         if (!VALID_TYPES.contains(type)) {
-            throw new IllegalArgumentException("Tipo de recurso inválido. Valores: PDF, VIDEO, LINK, DOCUMENT, PRESENTATION");
+            throw new ValidationException("Tipo de recurso inválido. Valores: PDF, VIDEO, LINK, DOCUMENT, PRESENTATION", "EducationalResource", "resourceType");
         }
 
         EducationalResource resource = EducationalResource.builder()
@@ -80,19 +82,19 @@ public class EducationalResourceService {
     @Transactional
     public EducationalResourceDTO updateResource(String id, UpdateEducationalResourceRequest request) {
         EducationalResource resource = educationalResourceRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Recurso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Recurso no encontrado", "EducationalResource", "id"));
 
         if (request.getTitle() != null) resource.setTitle(request.getTitle());
         if (request.getDescription() != null) resource.setDescription(request.getDescription());
         if (request.getResourceType() != null) {
             String newType = request.getResourceType().toUpperCase();
-            if (!VALID_TYPES.contains(newType)) throw new IllegalArgumentException("Tipo de recurso inválido");
+            if (!VALID_TYPES.contains(newType)) throw new ValidationException("Tipo de recurso inválido", "EducationalResource", "resourceType");
             resource.setResourceType(newType);
         }
         if (request.getResourceUrl() != null) resource.setResourceUrl(request.getResourceUrl());
         if (request.getCourseId() != null) {
             courseRepository.findById(request.getCourseId())
-                    .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
             resource.setCourseId(request.getCourseId());
         }
         if (request.getIsPublished() != null) resource.setIsPublished(request.getIsPublished());
@@ -105,7 +107,7 @@ public class EducationalResourceService {
     @Transactional
     public void deleteResource(String id) {
         EducationalResource resource = educationalResourceRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Recurso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Recurso no encontrado", "EducationalResource", "id"));
         resource.setIsDeleted(true);
         educationalResourceRepository.save(resource);
         log.info("Deleted resource: {}", id);

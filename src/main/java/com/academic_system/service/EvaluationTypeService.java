@@ -5,6 +5,8 @@ import com.academic_system.dto.cpanel.EvaluationTypeDTO;
 import com.academic_system.dto.cpanel.UpdateEvaluationTypeRequest;
 import com.academic_system.entity.postgres.Course;
 import com.academic_system.entity.postgres.EvaluationType;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.CourseRepository;
 import com.academic_system.repository.postgres.EvaluationTypeRepository;
 import lombok.RequiredArgsConstructor;
@@ -57,11 +59,11 @@ public class EvaluationTypeService {
     @Transactional
     public EvaluationTypeDTO createEvaluationType(CreateEvaluationTypeRequest request) {
         Course course = courseRepository.findById(request.getCourseId())
-                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
 
         if (evaluationTypeRepository.existsByCourseIdAndCodeAndIsActiveTrue(
                 request.getCourseId(), request.getCode().toUpperCase())) {
-            throw new IllegalArgumentException("Ya existe un tipo de evaluación con ese código en el curso");
+            throw new DuplicateResourceException("Ya existe un tipo de evaluación con ese código en el curso", "EvaluationType", "code");
         }
 
         EvaluationType evaluationType = EvaluationType.builder()
@@ -79,11 +81,11 @@ public class EvaluationTypeService {
     @Transactional
     public EvaluationTypeDTO updateEvaluationType(String id, UpdateEvaluationTypeRequest request) {
         EvaluationType evaluationType = evaluationTypeRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Tipo de evaluación no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de evaluación no encontrado", "EvaluationType", "id"));
 
         if (request.getCourseId() != null) {
             courseRepository.findById(request.getCourseId())
-                    .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
             evaluationType.setCourseId(request.getCourseId());
         }
         if (request.getCode() != null) {
@@ -91,7 +93,7 @@ public class EvaluationTypeService {
             UUID effectiveCourseId = request.getCourseId() != null ? request.getCourseId() : evaluationType.getCourseId();
             if (!evaluationType.getCode().equals(newCode) &&
                     evaluationTypeRepository.existsByCourseIdAndCodeAndIsActiveTrueAndIdNot(effectiveCourseId, newCode, evaluationType.getId())) {
-                throw new IllegalArgumentException("Ya existe un tipo de evaluación con ese código en el curso");
+                throw new DuplicateResourceException("Ya existe un tipo de evaluación con ese código en el curso", "EvaluationType", "code");
             }
             evaluationType.setCode(newCode);
         }
@@ -107,7 +109,7 @@ public class EvaluationTypeService {
     @Transactional
     public void deleteEvaluationType(String id) {
         EvaluationType evaluationType = evaluationTypeRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Tipo de evaluación no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de evaluación no encontrado", "EvaluationType", "id"));
         evaluationTypeRepository.delete(evaluationType);
         log.info("Deleted evaluation type: {}", id);
     }

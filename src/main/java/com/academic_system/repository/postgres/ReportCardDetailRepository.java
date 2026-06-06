@@ -14,5 +14,7 @@ public interface ReportCardDetailRepository extends JpaRepository<ReportCardDeta
 
     List<ReportCardDetail> findByReportCardId(UUID reportCardId);
 
+    List<ReportCardDetail> findByReportCardIdIn(List<UUID> reportCardIds);
+
     void deleteByReportCardId(UUID reportCardId);
 }

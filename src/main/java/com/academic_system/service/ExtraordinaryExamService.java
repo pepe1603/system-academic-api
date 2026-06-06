@@ -2,6 +2,9 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -68,25 +71,25 @@ public class ExtraordinaryExamService {
     @Transactional
     public ExtraordinaryExamDTO createExam(CreateExtraordinaryExamRequest request) {
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Estudiante no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estudiante no encontrado", "Student", "id"));
 
         Course course = courseRepository.findById(request.getCourseId())
-                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
 
         if (request.getAcademicSemesterId() != null) {
             academicSemesterRepository.findById(request.getAcademicSemesterId())
-                    .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
         }
 
         int attempt = request.getAttemptNumber() != null ? request.getAttemptNumber() : 1;
         if (extraordinaryExamRepository.existsByStudentIdAndCourseIdAndAttemptNumberAndIsDeletedFalse(
                 request.getStudentId(), request.getCourseId(), attempt)) {
-            throw new IllegalArgumentException("Ya existe un examen extraordinario para este estudiante, curso e intento");
+            throw new DuplicateResourceException("Ya existe un examen extraordinario para este estudiante, curso e intento", "ExtraordinaryExam");
         }
 
         if (request.getExaminerId() != null) {
             teacherRepository.findById(request.getExaminerId())
-                    .orElseThrow(() -> new IllegalArgumentException("Docente examinador no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Docente examinador no encontrado", "Teacher", "id"));
         }
 
         ExtraordinaryExam exam = ExtraordinaryExam.builder()
@@ -114,12 +117,12 @@ public class ExtraordinaryExamService {
     @Transactional
     public ExtraordinaryExamDTO updateExam(String id, UpdateExtraordinaryExamRequest request) {
         ExtraordinaryExam exam = extraordinaryExamRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Examen extraordinario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Examen extraordinario no encontrado", "ExtraordinaryExam", "id"));
 
         if (request.getStatus() != null) {
             String newStatus = request.getStatus().toUpperCase();
             if (!VALID_STATUSES.contains(newStatus)) {
-                throw new IllegalArgumentException("Estado inválido. Valores: SCHEDULED, APPLIED, APPROVED, FAILED, CANCELLED, NO_SHOW");
+                throw new ValidationException("Estado inválido. Valores: SCHEDULED, APPLIED, APPROVED, FAILED, CANCELLED, NO_SHOW", "ExtraordinaryExam", "status");
             }
             exam.setStatus(newStatus);
         }
@@ -133,7 +136,7 @@ public class ExtraordinaryExamService {
         if (request.getGradeLetter() != null) exam.setGradeLetter(request.getGradeLetter());
         if (request.getExaminerId() != null) {
             teacherRepository.findById(request.getExaminerId())
-                    .orElseThrow(() -> new IllegalArgumentException("Docente examinador no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Docente examinador no encontrado", "Teacher", "id"));
             exam.setExaminerId(request.getExaminerId());
         }
         if (request.getObservation() != null) exam.setObservation(request.getObservation());
@@ -149,7 +152,7 @@ public class ExtraordinaryExamService {
     @Transactional
     public void deleteExam(String id) {
         ExtraordinaryExam exam = extraordinaryExamRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Examen extraordinario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Examen extraordinario no encontrado", "ExtraordinaryExam", "id"));
         exam.setIsDeleted(true);
         extraordinaryExamRepository.save(exam);
         log.info("Deleted extraordinary exam: {}", id);

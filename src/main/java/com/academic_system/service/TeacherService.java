@@ -4,6 +4,8 @@ import com.academic_system.dto.cpanel.CreateTeacherRequest;
 import com.academic_system.dto.cpanel.TeacherDTO;
 import com.academic_system.dto.cpanel.UpdateTeacherRequest;
 import com.academic_system.entity.postgres.Teacher;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.TeacherRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,13 +49,13 @@ public class TeacherService {
     @Transactional
     public TeacherDTO createTeacher(CreateTeacherRequest request) {
         if (request.getRfc() != null && teacherRepository.existsByRfc(request.getRfc())) {
-            throw new IllegalArgumentException("El RFC ya está registrado");
+            throw new DuplicateResourceException("El RFC ya está registrado", "Teacher", "rfc");
         }
         if (request.getCurp() != null && teacherRepository.existsByCurp(request.getCurp())) {
-            throw new IllegalArgumentException("El CURP ya está registrado");
+            throw new DuplicateResourceException("El CURP ya está registrado", "Teacher", "curp");
         }
         if (request.getEmployeeNumber() != null && teacherRepository.existsByEmployeeNumber(request.getEmployeeNumber())) {
-            throw new IllegalArgumentException("El número de empleado ya está registrado");
+            throw new DuplicateResourceException("El número de empleado ya está registrado", "Teacher", "employeeNumber");
         }
 
         Teacher teacher = Teacher.builder()
@@ -75,19 +77,19 @@ public class TeacherService {
     @Transactional
     public TeacherDTO updateTeacher(String id, UpdateTeacherRequest request) {
         Teacher teacher = teacherRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Docente no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Docente no encontrado", "Teacher", "id"));
 
         if (request.getRfc() != null && !request.getRfc().equals(teacher.getRfc())
                 && teacherRepository.existsByRfc(request.getRfc())) {
-            throw new IllegalArgumentException("El RFC ya está registrado por otro docente");
+            throw new DuplicateResourceException("El RFC ya está registrado por otro docente", "Teacher", "rfc");
         }
         if (request.getCurp() != null && !request.getCurp().equals(teacher.getCurp())
                 && teacherRepository.existsByCurp(request.getCurp())) {
-            throw new IllegalArgumentException("El CURP ya está registrado por otro docente");
+            throw new DuplicateResourceException("El CURP ya está registrado por otro docente", "Teacher", "curp");
         }
         if (request.getEmployeeNumber() != null && !request.getEmployeeNumber().equals(teacher.getEmployeeNumber())
                 && teacherRepository.existsByEmployeeNumber(request.getEmployeeNumber())) {
-            throw new IllegalArgumentException("El número de empleado ya está registrado por otro docente");
+            throw new DuplicateResourceException("El número de empleado ya está registrado por otro docente", "Teacher", "employeeNumber");
         }
 
         if (request.getUserId() != null) teacher.setUserId(request.getUserId());
@@ -111,7 +113,7 @@ public class TeacherService {
     @Transactional
     public void deleteTeacher(String id) {
         Teacher teacher = teacherRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Docente no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Docente no encontrado", "Teacher", "id"));
         teacher.setIsDeleted(true);
         teacher.setUpdatedAt(LocalDateTime.now());
         teacherRepository.save(teacher);

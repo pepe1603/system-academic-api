@@ -2,6 +2,9 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,14 +73,14 @@ public class ConductService {
     @Transactional
     public ConductDTO createConduct(CreateConductRequest request) {
         Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId())
-                .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Inscripción no encontrada", "Enrollment", "id"));
 
         AcademicSemester academicSemester = academicSemesterRepository.findById(request.getAcademicSemesterId())
-                .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
 
         if (conductRepository.existsByEnrollmentIdAndAcademicSemesterIdAndIsDeletedFalse(
                 request.getEnrollmentId(), request.getAcademicSemesterId())) {
-            throw new IllegalArgumentException("Ya existe un registro de conducta para esta inscripción y semestre");
+            throw new DuplicateResourceException("Ya existe un registro de conducta para esta inscripción y semestre", "Conduct");
         }
 
         Conduct conduct = Conduct.builder()
@@ -98,7 +101,7 @@ public class ConductService {
     @Transactional
     public ConductDTO updateConduct(String id, UpdateConductRequest request) {
         Conduct conduct = conductRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Registro de conducta no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registro de conducta no encontrado", "Conduct", "id"));
 
         if (request.getGrade() != null) conduct.setGrade(request.getGrade());
         if (request.getObservations() != null) conduct.setObservations(request.getObservations());
@@ -114,7 +117,7 @@ public class ConductService {
     @Transactional
     public void deleteConduct(String id) {
         Conduct conduct = conductRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Registro de conducta no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registro de conducta no encontrado", "Conduct", "id"));
         conduct.setIsDeleted(true);
         conductRepository.save(conduct);
         log.info("Deleted conduct record: {}", id);
@@ -131,16 +134,16 @@ public class ConductService {
     @Transactional
     public ConductIncidentDTO createIncident(CreateConductIncidentRequest request) {
         enrollmentRepository.findById(request.getEnrollmentId())
-                .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Inscripción no encontrada", "Enrollment", "id"));
 
         String type = request.getIncidentType().toUpperCase();
         if (!VALID_INCIDENT_TYPES.contains(type)) {
-            throw new IllegalArgumentException("Tipo de incidente inválido. Valores: WARNING, CONGRATULATION, CALL_ATTENTION, SUSPENSION, OTHER");
+            throw new ValidationException("Tipo de incidente inválido. Valores: WARNING, CONGRATULATION, CALL_ATTENTION, SUSPENSION, OTHER", "ConductIncident", "incidentType");
         }
 
         String severity = request.getSeverity() != null ? request.getSeverity().toUpperCase() : "MINOR";
         if (!VALID_SEVERITIES.contains(severity)) {
-            throw new IllegalArgumentException("Severidad inválida. Valores: MINOR, MODERATE, SERIOUS");
+            throw new ValidationException("Severidad inválida. Valores: MINOR, MODERATE, SERIOUS", "ConductIncident", "severity");
         }
 
         ConductIncident incident = ConductIncident.builder()
@@ -162,12 +165,12 @@ public class ConductService {
     @Transactional
     public ConductIncidentDTO updateIncident(String id, UpdateConductIncidentRequest request) {
         ConductIncident incident = conductIncidentRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Incidente no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Incidente no encontrado", "ConductIncident", "id"));
 
         if (request.getIncidentType() != null) {
             String newType = request.getIncidentType().toUpperCase();
             if (!VALID_INCIDENT_TYPES.contains(newType)) {
-                throw new IllegalArgumentException("Tipo de incidente inválido");
+                throw new ValidationException("Tipo de incidente inválido", "ConductIncident", "incidentType");
             }
             incident.setIncidentType(newType);
         }
@@ -176,7 +179,7 @@ public class ConductService {
         if (request.getSeverity() != null) {
             String newSeverity = request.getSeverity().toUpperCase();
             if (!VALID_SEVERITIES.contains(newSeverity)) {
-                throw new IllegalArgumentException("Severidad inválida");
+                throw new ValidationException("Severidad inválida", "ConductIncident", "severity");
             }
             incident.setSeverity(newSeverity);
         }
@@ -191,7 +194,7 @@ public class ConductService {
     @Transactional
     public void deleteIncident(String id) {
         ConductIncident incident = conductIncidentRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Incidente no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Incidente no encontrado", "ConductIncident", "id"));
         incident.setIsDeleted(true);
         conductIncidentRepository.save(incident);
         log.info("Deleted conduct incident: {}", id);

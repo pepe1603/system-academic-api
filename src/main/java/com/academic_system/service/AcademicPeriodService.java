@@ -4,6 +4,8 @@ import com.academic_system.dto.cpanel.AcademicPeriodDTO;
 import com.academic_system.dto.cpanel.CreateAcademicPeriodRequest;
 import com.academic_system.dto.cpanel.UpdateAcademicPeriodRequest;
 import com.academic_system.entity.postgres.AcademicPeriod;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.AcademicPeriodRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +48,7 @@ public class AcademicPeriodService {
     @Transactional
     public AcademicPeriodDTO createAcademicPeriod(CreateAcademicPeriodRequest request) {
         if (academicPeriodRepository.existsByNameAndIsDeletedFalse(request.getName().toUpperCase())) {
-            throw new IllegalArgumentException("Ya existe un período académico con ese nombre");
+            throw new DuplicateResourceException("Ya existe un período académico con ese nombre", "AcademicPeriod", "name");
         }
 
         AcademicPeriod academicPeriod = AcademicPeriod.builder()
@@ -63,13 +65,13 @@ public class AcademicPeriodService {
     @Transactional
     public AcademicPeriodDTO updateAcademicPeriod(String id, UpdateAcademicPeriodRequest request) {
         AcademicPeriod academicPeriod = academicPeriodRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Período académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Período académico no encontrado", "AcademicPeriod", "id"));
 
         if (request.getName() != null) {
             String newName = request.getName().toUpperCase();
             if (!academicPeriod.getName().equals(newName) &&
                     academicPeriodRepository.existsByNameAndIsDeletedFalseAndIdNot(newName, academicPeriod.getId())) {
-                throw new IllegalArgumentException("Ya existe un período académico con ese nombre");
+                throw new DuplicateResourceException("Ya existe un período académico con ese nombre", "AcademicPeriod", "name");
             }
             academicPeriod.setName(newName);
         }
@@ -85,7 +87,7 @@ public class AcademicPeriodService {
     @Transactional
     public void deleteAcademicPeriod(String id) {
         AcademicPeriod academicPeriod = academicPeriodRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Período académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Período académico no encontrado", "AcademicPeriod", "id"));
         academicPeriod.setIsDeleted(true);
         academicPeriodRepository.save(academicPeriod);
         log.info("Deleted academic period: {}", id);

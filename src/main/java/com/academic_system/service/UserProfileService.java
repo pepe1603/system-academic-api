@@ -7,6 +7,8 @@ import com.academic_system.entity.postgres.Student;
 import com.academic_system.entity.postgres.Teacher;
 import com.academic_system.entity.postgres.User;
 import com.academic_system.entity.postgres.UserProfile;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.StudentRepository;
 import com.academic_system.repository.postgres.TeacherRepository;
 import com.academic_system.repository.postgres.UserProfileRepository;
@@ -136,16 +138,16 @@ public class UserProfileService {
     @Transactional
     public UserProfileDTO createOrUpdateProfile(String userId, UpdateProfileRequest request) {
         User user = userRepository.findById(java.util.UUID.fromString(userId))
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         // Validate CURP format if provided
         if (request.getCurp() != null && !isValidCurp(request.getCurp())) {
-            throw new IllegalArgumentException("CURP inválido. Debe tener 18 caracteres y formato válido");
+            throw new ValidationException("CURP inválido. Debe tener 18 caracteres y formato válido", "UserProfile", "curp");
         }
 
         // Validate RFC format if provided
         if (request.getRfc() != null && !isValidRfc(request.getRfc())) {
-            throw new IllegalArgumentException("RFC inválido. Debe tener 13 caracteres y formato válido");
+            throw new ValidationException("RFC inválido. Debe tener 13 caracteres y formato válido", "UserProfile", "rfc");
         }
 
         UserProfile profile = userProfileRepository.findByUserId(user.getId())
