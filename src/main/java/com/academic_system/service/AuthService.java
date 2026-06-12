@@ -123,7 +123,13 @@ public class AuthService {
 
     @Transactional
     public LoginResponse verifyOtp(String tempToken, String otpCode) {
-        String username = jwtService.extractUsername(tempToken);
+        String username;
+        try {
+            username = jwtService.extractUsername(tempToken);
+        } catch (Exception e) {
+            log.error("Token temporal inválido o expirado: {}", e.getMessage());
+            throw new BadCredentialsException("El token de verificación ha expirado. Por favor, inicie sesión nuevamente.");
+        }
         
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("Usuario no encontrado"));
@@ -224,10 +230,12 @@ public class AuthService {
         
         if (user != null) {
             userSessionRepository.invalidateAllSessionsForUser(user.getId());
+            log.info("Sesiones invalidadas para usuario: {}", username);
         }
         
         SecurityContextHolder.clearContext();
-        return ApiResponse.success("Sesión cerrada exitosamente", null);
+        
+        return ApiResponse.success("Sesión cerrada correctamente", null);
     }
     
     private String extractTokenFromHeader(String authorizationHeader) {

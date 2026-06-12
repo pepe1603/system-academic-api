@@ -133,6 +133,10 @@ public class EnrollmentService {
         AcademicPeriod academicPeriod = academicPeriodRepository.findById(request.getAcademicPeriodId())
                 .orElseThrow(() -> new ResourceNotFoundException("Período académico no encontrado", "AcademicPeriod", "id"));
 
+        if (!Boolean.TRUE.equals(academicPeriod.getIsActive())) {
+            throw new ValidationException("El período académico no está activo", "AcademicPeriod", "isActive");
+        }
+
         if (request.getGroupId() != null) {
             academicGroupRepository.findById(request.getGroupId())
                     .orElseThrow(() -> new ResourceNotFoundException("Grupo académico no encontrado", "AcademicGroup", "id"));

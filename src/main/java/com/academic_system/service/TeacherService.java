@@ -6,6 +6,7 @@ import com.academic_system.dto.cpanel.UpdateTeacherRequest;
 import com.academic_system.entity.postgres.Teacher;
 import com.academic_system.exception.DuplicateResourceException;
 import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.TeacherRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,10 @@ public class TeacherService {
 
     @Transactional
     public TeacherDTO createTeacher(CreateTeacherRequest request) {
+        if (request.getRfc() == null && request.getCurp() == null && request.getEmployeeNumber() == null) {
+            throw new ValidationException("Debe proporcionar al menos uno de los siguientes identificadores: RFC, CURP o número de empleado", "Teacher");
+        }
+
         if (request.getRfc() != null && teacherRepository.existsByRfc(request.getRfc())) {
             throw new DuplicateResourceException("El RFC ya está registrado", "Teacher", "rfc");
         }
