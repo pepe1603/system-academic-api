@@ -2,6 +2,8 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,11 +59,11 @@ public class StudentDocumentService {
     @Transactional
     public StudentDocumentDTO createDocument(CreateStudentDocumentRequest request) {
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Estudiante no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estudiante no encontrado", "Student", "id"));
 
         String docType = request.getDocumentType().toUpperCase();
         if (!VALID_DOCUMENT_TYPES.contains(docType)) {
-            throw new IllegalArgumentException("Tipo de documento inválido. Valores: CURP, BIRTH_CERTIFICATE, PHOTO, HIGH_SCHOOL_CERTIFICATE, HIGH_SCHOOL_KARDEX, IDENTIFICATION, PROOF_OF_ADDRESS, PAYMENT, OTHER");
+            throw new ValidationException("Tipo de documento inválido. Valores: CURP, BIRTH_CERTIFICATE, PHOTO, HIGH_SCHOOL_CERTIFICATE, HIGH_SCHOOL_KARDEX, IDENTIFICATION, PROOF_OF_ADDRESS, PAYMENT, OTHER", "StudentDocument", "documentType");
         }
 
         StudentDocument document = StudentDocument.builder()
@@ -86,7 +88,7 @@ public class StudentDocumentService {
     @Transactional
     public StudentDocumentDTO updateDocument(String id, UpdateStudentDocumentRequest request) {
         StudentDocument document = studentDocumentRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Documento no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Documento no encontrado", "StudentDocument", "id"));
 
         if (request.getOriginalName() != null) document.setOriginalName(request.getOriginalName());
         if (request.getFileName() != null) document.setFileName(request.getFileName());
@@ -110,7 +112,7 @@ public class StudentDocumentService {
     @Transactional
     public void deleteDocument(String id) {
         StudentDocument document = studentDocumentRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Documento no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Documento no encontrado", "StudentDocument", "id"));
         document.setIsDeleted(true);
         studentDocumentRepository.save(document);
         log.info("Deleted document: {}", id);

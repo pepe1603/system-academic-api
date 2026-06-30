@@ -1,5 +1,6 @@
 package com.academic_system.service;
 
+import com.academic_system.exception.BusinessRuleException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +40,7 @@ public class OtpService {
 
     public String generateOtp(String purpose, String identifier) {
         if (isLockedOut(purpose, identifier)) {
-            throw new IllegalStateException("Cuenta bloqueada. Intenta más tarde.");
+            throw new BusinessRuleException("Cuenta bloqueada. Intenta más tarde.", "User", "account");
         }
 
         String otp = generateRandomOtp();
@@ -54,7 +55,7 @@ public class OtpService {
 
     public void sendOtpByEmail(String email, String purpose) {
         if (isLockedOut(purpose, email)) {
-            throw new IllegalStateException("Cuenta bloqueada. Intenta más tarde.");
+            throw new BusinessRuleException("Cuenta bloqueada. Intenta más tarde.", "User", "account");
         }
 
         String otp = generateOtp(purpose, email);

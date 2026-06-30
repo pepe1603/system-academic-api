@@ -2,6 +2,8 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,11 +58,11 @@ public class GuardianService {
     @Transactional
     public GuardianDTO createGuardian(CreateGuardianRequest request) {
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Estudiante no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estudiante no encontrado", "Student", "id"));
 
         String relationship = request.getRelationship().toUpperCase();
         if (!VALID_RELATIONSHIPS.contains(relationship)) {
-            throw new IllegalArgumentException("Parentesco inválido. Valores: FATHER, MOTHER, GUARDIAN, SIBLING, OTHER");
+            throw new ValidationException("Parentesco inválido. Valores: FATHER, MOTHER, GUARDIAN, SIBLING, OTHER", "Guardian", "relationship");
         }
 
         Guardian guardian = Guardian.builder()
@@ -85,13 +87,13 @@ public class GuardianService {
     @Transactional
     public GuardianDTO updateGuardian(String id, UpdateGuardianRequest request) {
         Guardian guardian = guardianRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Tutor no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tutor no encontrado", "Guardian", "id"));
 
         if (request.getFullName() != null) guardian.setFullName(request.getFullName());
         if (request.getRelationship() != null) {
             String newRel = request.getRelationship().toUpperCase();
             if (!VALID_RELATIONSHIPS.contains(newRel)) {
-                throw new IllegalArgumentException("Parentesco inválido");
+                throw new ValidationException("Parentesco inválido", "Guardian", "relationship");
             }
             guardian.setRelationship(newRel);
         }
@@ -113,7 +115,7 @@ public class GuardianService {
     @Transactional
     public void deleteGuardian(String id) {
         Guardian guardian = guardianRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Tutor no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tutor no encontrado", "Guardian", "id"));
         guardian.setIsDeleted(true);
         guardianRepository.save(guardian);
         log.info("Deleted guardian: {}", id);

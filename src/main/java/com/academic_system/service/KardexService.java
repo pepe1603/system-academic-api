@@ -4,6 +4,9 @@ import com.academic_system.dto.cpanel.CreateKardexRequest;
 import com.academic_system.dto.cpanel.KardexDTO;
 import com.academic_system.dto.cpanel.UpdateKardexRequest;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
+import com.academic_system.exception.ValidationException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,9 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,57 +35,87 @@ public class KardexService {
 
     @Transactional(readOnly = true)
     public Page<KardexDTO> getAllKardexRecords(Pageable pageable) {
-        return kardexRepository.findAllByIsDeletedFalse(pageable)
-                .map(this::toDTO);
+        Page<Kardex> page = kardexRepository.findAllByIsDeletedFalse(pageable);
+        List<Kardex> records = page.getContent();
+
+        Set<UUID> studentIds = records.stream().map(Kardex::getStudentId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<UUID> courseIds = records.stream().map(Kardex::getCourseId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<UUID> semesterIds = records.stream().map(Kardex::getAcademicSemesterId).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        Map<UUID, Student> studentMap = studentRepository.findAllById(studentIds).stream().collect(Collectors.toMap(Student::getId, s -> s));
+        Map<UUID, Course> courseMap = courseRepository.findAllById(courseIds).stream().collect(Collectors.toMap(Course::getId, c -> c));
+        Map<UUID, AcademicSemester> semesterMap = academicSemesterRepository.findAllById(semesterIds).stream().collect(Collectors.toMap(AcademicSemester::getId, as -> as));
+
+        return page.map(k -> toDTO(k, studentMap, courseMap, semesterMap));
     }
 
     @Transactional(readOnly = true)
     public Optional<KardexDTO> getKardexById(String id) {
         return kardexRepository.findById(UUID.fromString(id))
                 .filter(k -> !Boolean.TRUE.equals(k.getIsDeleted()))
-                .map(this::toDTO);
+                .map(k -> toDTO(k, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap()));
     }
 
     @Transactional(readOnly = true)
     public List<KardexDTO> getKardexByStudent(String studentId) {
-        return kardexRepository.findByStudentIdAndIsDeletedFalse(UUID.fromString(studentId))
-                .stream()
-                .map(this::toDTO)
+        List<Kardex> records = kardexRepository.findByStudentIdAndIsDeletedFalse(UUID.fromString(studentId));
+
+        Set<UUID> studentIds = records.stream().map(Kardex::getStudentId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<UUID> courseIds = records.stream().map(Kardex::getCourseId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<UUID> semesterIds = records.stream().map(Kardex::getAcademicSemesterId).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        Map<UUID, Student> studentMap = studentRepository.findAllById(studentIds).stream().collect(Collectors.toMap(Student::getId, s -> s));
+        Map<UUID, Course> courseMap = courseRepository.findAllById(courseIds).stream().collect(Collectors.toMap(Course::getId, c -> c));
+        Map<UUID, AcademicSemester> semesterMap = academicSemesterRepository.findAllById(semesterIds).stream().collect(Collectors.toMap(AcademicSemester::getId, as -> as));
+
+        return records.stream()
+                .map(k -> toDTO(k, studentMap, courseMap, semesterMap))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<KardexDTO> getDeletedKardexRecords(Pageable pageable) {
-        return kardexRepository.findAllByIsDeletedTrue(pageable)
-                .map(this::toDTO)
-                .getContent();
+        Page<Kardex> page = kardexRepository.findAllByIsDeletedTrue(pageable);
+        List<Kardex> records = page.getContent();
+
+        Set<UUID> studentIds = records.stream().map(Kardex::getStudentId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<UUID> courseIds = records.stream().map(Kardex::getCourseId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<UUID> semesterIds = records.stream().map(Kardex::getAcademicSemesterId).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        Map<UUID, Student> studentMap = studentRepository.findAllById(studentIds).stream().collect(Collectors.toMap(Student::getId, s -> s));
+        Map<UUID, Course> courseMap = courseRepository.findAllById(courseIds).stream().collect(Collectors.toMap(Course::getId, c -> c));
+        Map<UUID, AcademicSemester> semesterMap = academicSemesterRepository.findAllById(semesterIds).stream().collect(Collectors.toMap(AcademicSemester::getId, as -> as));
+
+        return records.stream()
+                .map(k -> toDTO(k, studentMap, courseMap, semesterMap))
+                .toList();
     }
 
     @Transactional
     public KardexDTO createKardex(CreateKardexRequest request) {
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Estudiante no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estudiante no encontrado", "Student", "id"));
 
         Course course = courseRepository.findById(request.getCourseId())
-                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
 
         AcademicSemester academicSemester = academicSemesterRepository.findById(request.getAcademicSemesterId())
-                .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
 
         int attempt = request.getAttemptNumber() != null ? request.getAttemptNumber() : 1;
         if (kardexRepository.existsByStudentIdAndCourseIdAndAcademicSemesterIdAndAttemptNumberAndIsDeletedFalse(
                 request.getStudentId(), request.getCourseId(), request.getAcademicSemesterId(), attempt)) {
-            throw new IllegalArgumentException("Ya existe un registro kardex para este estudiante, curso, semestre e intento");
+            throw new DuplicateResourceException("Ya existe un registro kardex para este estudiante, curso, semestre e intento", "Kardex");
         }
 
         if (request.getEnrollmentId() != null) {
             enrollmentRepository.findById(request.getEnrollmentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Inscripción no encontrada", "Enrollment", "id"));
         }
 
         String status = request.getStatus() != null ? request.getStatus().toUpperCase() : "ENROLLED";
         if (!VALID_STATUSES.contains(status)) {
-            throw new IllegalArgumentException("Estado inválido. Valores: ENROLLED, APPROVED, FAILED, EXTRAORDINARY, DROPPED, VALIDATED, EQUIVALENCE");
+            throw new ValidationException("Estado inválido. Valores: ENROLLED, APPROVED, FAILED, EXTRAORDINARY, DROPPED, VALIDATED, EQUIVALENCE", "Kardex", "status");
         }
 
         Kardex kardex = Kardex.builder()
@@ -101,18 +133,18 @@ public class KardexService {
 
         kardex = kardexRepository.save(kardex);
         log.info("Created kardex record: {} - {} ({})", student.getEnrollmentNumber(), course.getCourseCode(), kardex.getId());
-        return toDTO(kardex);
+        return toDTO(kardex, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap());
     }
 
     @Transactional
     public KardexDTO updateKardex(String id, UpdateKardexRequest request) {
         Kardex kardex = kardexRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Registro kardex no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registro kardex no encontrado", "Kardex", "id"));
 
         if (request.getStatus() != null) {
             String newStatus = request.getStatus().toUpperCase();
             if (!VALID_STATUSES.contains(newStatus)) {
-                throw new IllegalArgumentException("Estado inválido. Valores: ENROLLED, APPROVED, FAILED, EXTRAORDINARY, DROPPED, VALIDATED, EQUIVALENCE");
+                throw new ValidationException("Estado inválido. Valores: ENROLLED, APPROVED, FAILED, EXTRAORDINARY, DROPPED, VALIDATED, EQUIVALENCE", "Kardex", "status");
             }
             kardex.setStatus(newStatus);
         }
@@ -128,19 +160,20 @@ public class KardexService {
 
         kardex = kardexRepository.save(kardex);
         log.info("Updated kardex record: {}", kardex.getId());
-        return toDTO(kardex);
+        return toDTO(kardex, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap());
     }
 
     @Transactional
     public void deleteKardex(String id) {
         Kardex kardex = kardexRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Registro kardex no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registro kardex no encontrado", "Kardex", "id"));
         kardex.setIsDeleted(true);
         kardexRepository.save(kardex);
         log.info("Deleted kardex record: {}", id);
     }
 
-    private KardexDTO toDTO(Kardex kardex) {
+    private KardexDTO toDTO(Kardex kardex, Map<UUID, Student> studentMap,
+                            Map<UUID, Course> courseMap, Map<UUID, AcademicSemester> semesterMap) {
         KardexDTO.KardexDTOBuilder builder = KardexDTO.builder()
                 .id(kardex.getId())
                 .finalGrade(kardex.getFinalGrade())
@@ -162,23 +195,36 @@ public class KardexService {
                 .enrollmentId(kardex.getEnrollmentId());
 
         if (kardex.getStudentId() != null) {
-            studentRepository.findById(kardex.getStudentId()).ifPresent(s -> {
+            Student s = studentMap.get(kardex.getStudentId());
+            if (s == null && studentMap.isEmpty()) {
+                s = studentRepository.findById(kardex.getStudentId()).orElse(null);
+            }
+            if (s != null) {
                 builder.studentName(s.getFirstName() + " " + s.getLastName());
                 builder.enrollmentNumber(s.getEnrollmentNumber());
-            });
+            }
         }
 
         if (kardex.getCourseId() != null) {
-            courseRepository.findById(kardex.getCourseId()).ifPresent(c -> {
+            Course c = courseMap.get(kardex.getCourseId());
+            if (c == null && courseMap.isEmpty()) {
+                c = courseRepository.findById(kardex.getCourseId()).orElse(null);
+            }
+            if (c != null) {
                 builder.courseCode(c.getCourseCode());
                 builder.courseName(c.getName());
                 builder.courseCredits(c.getCredits());
-            });
+            }
         }
 
         if (kardex.getAcademicSemesterId() != null) {
-            academicSemesterRepository.findById(kardex.getAcademicSemesterId()).ifPresent(as ->
-                    builder.academicSemesterName(as.getName()));
+            AcademicSemester as = semesterMap.get(kardex.getAcademicSemesterId());
+            if (as == null && semesterMap.isEmpty()) {
+                as = academicSemesterRepository.findById(kardex.getAcademicSemesterId()).orElse(null);
+            }
+            if (as != null) {
+                builder.academicSemesterName(as.getName());
+            }
         }
 
         return builder.build();

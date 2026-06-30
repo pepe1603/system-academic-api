@@ -2,6 +2,8 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,14 +56,14 @@ public class SemesterService {
     public SemesterDTO createSemester(CreateSemesterRequest request) {
         if (request.getStudyPlanId() != null) {
             studyPlanRepository.findById(request.getStudyPlanId())
-                    .orElseThrow(() -> new IllegalArgumentException("Plan de estudio no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Plan de estudio no encontrado", "StudyPlan", "id"));
         }
 
         semesterRepository.findByStudyPlanIdAndSemesterNumberAndIsDeletedFalse(
                 request.getStudyPlanId(), request.getSemesterNumber())
                 .ifPresent(s -> {
-                    throw new IllegalArgumentException("Ya existe el semestre " + request.getSemesterNumber()
-                            + " para este plan de estudio");
+                    throw new DuplicateResourceException("Ya existe el semestre " + request.getSemesterNumber()
+                            + " para este plan de estudio", "Semester", "semesterNumber");
                 });
 
         Semester semester = Semester.builder()
@@ -78,11 +80,11 @@ public class SemesterService {
     @Transactional
     public SemesterDTO updateSemester(String id, UpdateSemesterRequest request) {
         Semester semester = semesterRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Semestre no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre no encontrado", "Semester", "id"));
 
         if (request.getStudyPlanId() != null) {
             studyPlanRepository.findById(request.getStudyPlanId())
-                    .orElseThrow(() -> new IllegalArgumentException("Plan de estudio no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Plan de estudio no encontrado", "StudyPlan", "id"));
             semester.setStudyPlanId(request.getStudyPlanId());
         }
         if (request.getSemesterNumber() != null) semester.setSemesterNumber(request.getSemesterNumber());
@@ -97,7 +99,7 @@ public class SemesterService {
     @Transactional
     public void deleteSemester(String id) {
         Semester semester = semesterRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Semestre no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre no encontrado", "Semester", "id"));
         semester.setIsDeleted(true);
         semesterRepository.save(semester);
         log.info("Deleted semester: {}", id);

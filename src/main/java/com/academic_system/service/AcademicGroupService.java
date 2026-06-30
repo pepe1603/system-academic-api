@@ -7,6 +7,8 @@ import com.academic_system.entity.postgres.AcademicGroup;
 import com.academic_system.entity.postgres.AcademicSemester;
 import com.academic_system.entity.postgres.Course;
 import com.academic_system.entity.postgres.Teacher;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.AcademicGroupRepository;
 import com.academic_system.repository.postgres.AcademicSemesterRepository;
 import com.academic_system.repository.postgres.CourseRepository;
@@ -56,14 +58,14 @@ public class AcademicGroupService {
     public AcademicGroupDTO createAcademicGroup(CreateAcademicGroupRequest request) {
         if (academicGroupRepository.existsByNameAndAcademicSemesterIdAndCourseIdAndIsDeletedFalse(
                 request.getName(), request.getAcademicSemesterId(), request.getCourseId())) {
-            throw new IllegalArgumentException("Ya existe un grupo con ese nombre en el semestre y curso seleccionados");
+            throw new DuplicateResourceException("Ya existe un grupo con ese nombre en el semestre y curso seleccionados", "AcademicGroup", "name");
         }
 
         AcademicSemester academicSemester = academicSemesterRepository.findById(request.getAcademicSemesterId())
-                .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
 
         Course course = courseRepository.findById(request.getCourseId())
-                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
 
         AcademicGroup group = AcademicGroup.builder()
                 .name(request.getName())
@@ -81,7 +83,7 @@ public class AcademicGroupService {
     @Transactional
     public AcademicGroupDTO updateAcademicGroup(String id, UpdateAcademicGroupRequest request) {
         AcademicGroup group = academicGroupRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Grupo académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Grupo académico no encontrado", "AcademicGroup", "id"));
 
         if (request.getName() != null || request.getAcademicSemesterId() != null || request.getCourseId() != null) {
             String newName = request.getName() != null ? request.getName() : group.getName();
@@ -91,7 +93,7 @@ public class AcademicGroupService {
             if (!group.getName().equals(newName) || !group.getAcademicSemesterId().equals(newSemesterId) || !group.getCourseId().equals(newCourseId)) {
                 if (academicGroupRepository.existsByNameAndAcademicSemesterIdAndCourseIdAndIsDeletedFalseAndIdNot(
                         newName, newSemesterId, newCourseId, group.getId())) {
-                    throw new IllegalArgumentException("Ya existe un grupo con ese nombre en el semestre y curso seleccionados");
+                    throw new DuplicateResourceException("Ya existe un grupo con ese nombre en el semestre y curso seleccionados", "AcademicGroup", "name");
                 }
             }
         }
@@ -99,17 +101,17 @@ public class AcademicGroupService {
         if (request.getName() != null) group.setName(request.getName());
         if (request.getAcademicSemesterId() != null) {
             academicSemesterRepository.findById(request.getAcademicSemesterId())
-                    .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
             group.setAcademicSemesterId(request.getAcademicSemesterId());
         }
         if (request.getCourseId() != null) {
             courseRepository.findById(request.getCourseId())
-                    .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
             group.setCourseId(request.getCourseId());
         }
         if (request.getTeacherId() != null) {
             teacherRepository.findById(request.getTeacherId())
-                    .orElseThrow(() -> new IllegalArgumentException("Profesor no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Profesor no encontrado", "Teacher", "id"));
             group.setTeacherId(request.getTeacherId());
         }
         if (request.getCapacity() != null) group.setCapacity(request.getCapacity());
@@ -123,7 +125,7 @@ public class AcademicGroupService {
     @Transactional
     public void deleteAcademicGroup(String id) {
         AcademicGroup group = academicGroupRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Grupo académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Grupo académico no encontrado", "AcademicGroup", "id"));
         group.setIsDeleted(true);
         academicGroupRepository.save(group);
         log.info("Deleted academic group: {}", id);

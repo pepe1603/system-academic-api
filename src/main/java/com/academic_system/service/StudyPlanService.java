@@ -4,6 +4,8 @@ import com.academic_system.dto.cpanel.CreateStudyPlanRequest;
 import com.academic_system.dto.cpanel.StudyPlanDTO;
 import com.academic_system.dto.cpanel.UpdateStudyPlanRequest;
 import com.academic_system.entity.postgres.StudyPlan;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.StudyPlanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,7 +47,7 @@ public class StudyPlanService {
     @Transactional
     public StudyPlanDTO createStudyPlan(CreateStudyPlanRequest request) {
         if (studyPlanRepository.existsByCodeAndIsDeletedFalse(request.getCode())) {
-            throw new IllegalArgumentException("Ya existe un plan de estudio con ese código");
+            throw new DuplicateResourceException("Ya existe un plan de estudio con ese código", "StudyPlan", "code");
         }
 
         StudyPlan studyPlan = StudyPlan.builder()
@@ -66,12 +68,12 @@ public class StudyPlanService {
     @Transactional
     public StudyPlanDTO updateStudyPlan(String id, UpdateStudyPlanRequest request) {
         StudyPlan studyPlan = studyPlanRepository.findById(java.util.UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Plan de estudio no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Plan de estudio no encontrado", "StudyPlan", "id"));
 
         if (request.getCode() != null) {
             if (!studyPlan.getCode().equals(request.getCode()) &&
                     studyPlanRepository.existsByCodeAndIsDeletedFalseAndIdNot(request.getCode(), studyPlan.getId())) {
-                throw new IllegalArgumentException("Ya existe un plan de estudio con ese código");
+                throw new DuplicateResourceException("Ya existe un plan de estudio con ese código", "StudyPlan", "code");
             }
             studyPlan.setCode(request.getCode().toUpperCase());
         }
@@ -90,7 +92,7 @@ public class StudyPlanService {
     @Transactional
     public void deleteStudyPlan(String id) {
         StudyPlan studyPlan = studyPlanRepository.findById(java.util.UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Plan de estudio no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Plan de estudio no encontrado", "StudyPlan", "id"));
         studyPlan.setIsDeleted(true);
         studyPlanRepository.save(studyPlan);
         log.info("Deleted study plan: {}", id);

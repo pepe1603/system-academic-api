@@ -4,6 +4,8 @@ import com.academic_system.dto.cpanel.AcademicSemesterDTO;
 import com.academic_system.dto.cpanel.CreateAcademicSemesterRequest;
 import com.academic_system.dto.cpanel.UpdateAcademicSemesterRequest;
 import com.academic_system.entity.postgres.AcademicSemester;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.AcademicSemesterRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +48,7 @@ public class AcademicSemesterService {
     @Transactional
     public AcademicSemesterDTO createAcademicSemester(CreateAcademicSemesterRequest request) {
         if (academicSemesterRepository.existsByNameAndIsDeletedFalse(request.getName())) {
-            throw new IllegalArgumentException("Ya existe un semestre académico con ese nombre");
+            throw new DuplicateResourceException("Ya existe un semestre académico con ese nombre", "AcademicSemester", "name");
         }
 
         AcademicSemester academicSemester = AcademicSemester.builder()
@@ -71,12 +73,12 @@ public class AcademicSemesterService {
     @Transactional
     public AcademicSemesterDTO updateAcademicSemester(String id, UpdateAcademicSemesterRequest request) {
         AcademicSemester academicSemester = academicSemesterRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
 
         if (request.getName() != null) {
             if (!academicSemester.getName().equals(request.getName()) &&
                     academicSemesterRepository.existsByNameAndIsDeletedFalseAndIdNot(request.getName(), academicSemester.getId())) {
-                throw new IllegalArgumentException("Ya existe un semestre académico con ese nombre");
+                throw new DuplicateResourceException("Ya existe un semestre académico con ese nombre", "AcademicSemester", "name");
             }
             academicSemester.setName(request.getName());
         }
@@ -99,7 +101,7 @@ public class AcademicSemesterService {
     @Transactional
     public void deleteAcademicSemester(String id) {
         AcademicSemester academicSemester = academicSemesterRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
         academicSemester.setIsDeleted(true);
         academicSemesterRepository.save(academicSemester);
         log.info("Deleted academic semester: {}", id);

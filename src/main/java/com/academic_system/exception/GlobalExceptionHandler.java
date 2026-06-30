@@ -68,6 +68,34 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Error de autenticación"));
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException ex) {
+        log.warn("Resource not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateResource(DuplicateResourceException ex) {
+        log.warn("Duplicate resource: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidation(ValidationException ex) {
+        log.warn("Validation error: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessRule(BusinessRuleException ex) {
+        log.warn("Business rule violation: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
         log.warn("Invalid argument: {}", ex.getMessage());

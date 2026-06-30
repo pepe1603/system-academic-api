@@ -4,8 +4,10 @@ import com.academic_system.dto.auth.*;
 
 import com.academic_system.entity.postgres.User;
 import com.academic_system.entity.postgres.UserSession;
+import com.academic_system.exception.BusinessRuleException;
 import com.academic_system.exception.EmailNotVerifiedException;
 import com.academic_system.exception.PasswordChangeRequiredException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.PasswordRecoveryRepository;
 import com.academic_system.repository.postgres.UserRepository;
 import com.academic_system.repository.postgres.UserSessionRepository;
@@ -121,7 +123,13 @@ public class AuthService {
 
     @Transactional
     public LoginResponse verifyOtp(String tempToken, String otpCode) {
-        String username = jwtService.extractUsername(tempToken);
+        String username;
+        try {
+            username = jwtService.extractUsername(tempToken);
+        } catch (Exception e) {
+            log.error("Token temporal inválido o expirado: {}", e.getMessage());
+            throw new BadCredentialsException("El token de verificación ha expirado. Por favor, inicie sesión nuevamente.");
+        }
         
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("Usuario no encontrado"));
@@ -222,10 +230,12 @@ public class AuthService {
         
         if (user != null) {
             userSessionRepository.invalidateAllSessionsForUser(user.getId());
+            log.info("Sesiones invalidadas para usuario: {}", username);
         }
         
         SecurityContextHolder.clearContext();
-        return ApiResponse.success("Sesión cerrada exitosamente", null);
+        
+        return ApiResponse.success("Sesión cerrada correctamente", null);
     }
     
     private String extractTokenFromHeader(String authorizationHeader) {
@@ -295,7 +305,7 @@ public class AuthService {
     @Transactional
     public ApiResponse<Void> requestTwoFactorSetup(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         otpService.sendOtpByEmail(user.getEmail(), "LOGIN_2FA");
         
@@ -305,7 +315,7 @@ public class AuthService {
     @Transactional
     public ApiResponse<Void> enableTwoFactor(UUID userId, String code) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         if (!otpService.verifyOtp("LOGIN_2FA", user.getEmail(), code).isSuccess()) {
             return ApiResponse.error("Código de verificación inválido o expirado");
@@ -320,7 +330,7 @@ public class AuthService {
     @Transactional
     public ApiResponse<Void> disableTwoFactor(UUID userId, String password) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             return ApiResponse.error("Contraseña incorrecta");
@@ -340,7 +350,7 @@ public class AuthService {
                 SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         
         User user = userRepository.findById(userDetails.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "id"));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             return ApiResponse.error("Contraseña actual incorrecta");
@@ -361,14 +371,14 @@ public class AuthService {
     @Transactional
     public LoginResponse changeTempPassword(String email, String tempPassword, String newPassword) {
         User user = userRepository.findByEmail(email.toLowerCase())
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado", "User", "email"));
 
         if (!tempPassword.equals(user.getTempPassword())) {
             throw new BadCredentialsException("Contraseña temporal inválida");
         }
 
         if (!user.getIsActive()) {
-            throw new IllegalStateException("La cuenta está desactivada");
+            throw new BusinessRuleException("La cuenta está desactivada", "User", "isActive");
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));

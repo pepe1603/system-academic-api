@@ -4,6 +4,8 @@ import com.academic_system.dto.cpanel.CreateGenerationRequest;
 import com.academic_system.dto.cpanel.GenerationDTO;
 import com.academic_system.dto.cpanel.UpdateGenerationRequest;
 import com.academic_system.entity.postgres.Generation;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.GenerationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +46,7 @@ public class GenerationService {
     @Transactional
     public GenerationDTO createGeneration(CreateGenerationRequest request) {
         if (generationRepository.existsByNameAndIsDeletedFalse(request.getName())) {
-            throw new IllegalArgumentException("Ya existe una generación con ese nombre");
+            throw new DuplicateResourceException("Ya existe una generación con ese nombre", "Generation", "name");
         }
 
         Generation generation = Generation.builder()
@@ -64,12 +66,12 @@ public class GenerationService {
     @Transactional
     public GenerationDTO updateGeneration(String id, UpdateGenerationRequest request) {
         Generation generation = generationRepository.findById(java.util.UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Generación no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Generación no encontrada", "Generation", "id"));
 
         if (request.getName() != null) {
             if (!generation.getName().equals(request.getName()) &&
                     generationRepository.existsByNameAndIsDeletedFalseAndIdNot(request.getName(), generation.getId())) {
-                throw new IllegalArgumentException("Ya existe una generación con ese nombre");
+                throw new DuplicateResourceException("Ya existe una generación con ese nombre", "Generation", "name");
             }
             generation.setName(request.getName());
         }
@@ -87,7 +89,7 @@ public class GenerationService {
     @Transactional
     public void deleteGeneration(String id) {
         Generation generation = generationRepository.findById(java.util.UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Generación no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Generación no encontrada", "Generation", "id"));
         generation.setIsDeleted(true);
         generationRepository.save(generation);
         log.info("Deleted generation: {}", id);

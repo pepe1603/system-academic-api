@@ -6,6 +6,8 @@ import com.academic_system.dto.cpanel.UpdateCourseRequest;
 import com.academic_system.entity.postgres.Course;
 import com.academic_system.entity.postgres.Semester;
 import com.academic_system.entity.postgres.StudyPlan;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.CourseRepository;
 import com.academic_system.repository.postgres.SemesterRepository;
 import com.academic_system.repository.postgres.StudyPlanRepository;
@@ -52,14 +54,14 @@ public class CourseService {
     @Transactional
     public CourseDTO createCourse(CreateCourseRequest request) {
         if (courseRepository.existsByCourseCodeAndIsDeletedFalse(request.getCourseCode().toUpperCase())) {
-            throw new IllegalArgumentException("Ya existe un curso con ese código");
+            throw new DuplicateResourceException("Ya existe un curso con ese código", "Course", "courseCode");
         }
 
         StudyPlan studyPlan = studyPlanRepository.findById(request.getStudyPlanId())
-                .orElseThrow(() -> new IllegalArgumentException("Plan de estudio no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Plan de estudio no encontrado", "StudyPlan", "id"));
 
         Semester semester = semesterRepository.findById(request.getSemesterId())
-                .orElseThrow(() -> new IllegalArgumentException("Semestre no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre no encontrado", "Semester", "id"));
 
         Course course = Course.builder()
                 .studyPlanId(studyPlan.getId())
@@ -82,13 +84,13 @@ public class CourseService {
     @Transactional
     public CourseDTO updateCourse(String id, UpdateCourseRequest request) {
         Course course = courseRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
 
         if (request.getCourseCode() != null) {
             String newCode = request.getCourseCode().toUpperCase();
             if (!course.getCourseCode().equals(newCode) &&
                     courseRepository.existsByCourseCodeAndIsDeletedFalseAndIdNot(newCode, course.getId())) {
-                throw new IllegalArgumentException("Ya existe un curso con ese código");
+                throw new DuplicateResourceException("Ya existe un curso con ese código", "Course", "courseCode");
             }
             course.setCourseCode(newCode);
         }
@@ -102,12 +104,12 @@ public class CourseService {
 
         if (request.getStudyPlanId() != null) {
             StudyPlan studyPlan = studyPlanRepository.findById(request.getStudyPlanId())
-                    .orElseThrow(() -> new IllegalArgumentException("Plan de estudio no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Plan de estudio no encontrado", "StudyPlan", "id"));
             course.setStudyPlanId(studyPlan.getId());
         }
         if (request.getSemesterId() != null) {
             Semester semester = semesterRepository.findById(request.getSemesterId())
-                    .orElseThrow(() -> new IllegalArgumentException("Semestre no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Semestre no encontrado", "Semester", "id"));
             course.setSemesterId(semester.getId());
         }
 
@@ -119,7 +121,7 @@ public class CourseService {
     @Transactional
     public void deleteCourse(String id) {
         Course course = courseRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
         course.setIsDeleted(true);
         courseRepository.save(course);
         log.info("Deleted course: {}", id);

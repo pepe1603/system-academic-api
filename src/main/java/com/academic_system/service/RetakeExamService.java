@@ -2,6 +2,8 @@ package com.academic_system.service;
 
 import com.academic_system.dto.cpanel.*;
 import com.academic_system.entity.postgres.*;
+import com.academic_system.exception.DuplicateResourceException;
+import com.academic_system.exception.ResourceNotFoundException;
 import com.academic_system.repository.postgres.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,22 +73,22 @@ public class RetakeExamService {
     @Transactional
     public RetakeExamDTO createRetakeExam(CreateRetakeExamRequest request) {
         Student student = studentRepository.findById(request.getStudentId())
-                .orElseThrow(() -> new IllegalArgumentException("Estudiante no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Estudiante no encontrado", "Student", "id"));
 
         Course course = courseRepository.findById(request.getCourseId())
-                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso no encontrado", "Course", "id"));
 
         AcademicSemester academicSemester = academicSemesterRepository.findById(request.getAcademicSemesterId())
-                .orElseThrow(() -> new IllegalArgumentException("Semestre académico no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Semestre académico no encontrado", "AcademicSemester", "id"));
 
         if (retakeExamRepository.existsByStudentIdAndCourseIdAndAcademicSemesterIdAndIsDeletedFalse(
                 request.getStudentId(), request.getCourseId(), request.getAcademicSemesterId())) {
-            throw new IllegalArgumentException("Ya existe un registro de retake para este estudiante, curso y semestre");
+            throw new DuplicateResourceException("Ya existe un registro de retake para este estudiante, curso y semestre", "RetakeExam");
         }
 
         if (request.getOriginSemesterId() != null) {
             academicSemesterRepository.findById(request.getOriginSemesterId())
-                    .orElseThrow(() -> new IllegalArgumentException("Semestre de origen no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Semestre de origen no encontrado", "AcademicSemester", "id"));
         }
 
         RetakeExam retakeExam = RetakeExam.builder()
@@ -105,11 +107,11 @@ public class RetakeExamService {
     @Transactional
     public RetakeExamDTO updateRetakeExam(String id, UpdateRetakeExamRequest request) {
         RetakeExam retakeExam = retakeExamRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Registro de retake no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registro de retake no encontrado", "RetakeExam", "id"));
 
         if (request.getOriginSemesterId() != null) {
             academicSemesterRepository.findById(request.getOriginSemesterId())
-                    .orElseThrow(() -> new IllegalArgumentException("Semestre de origen no encontrado"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Semestre de origen no encontrado", "AcademicSemester", "id"));
             retakeExam.setOriginSemesterId(request.getOriginSemesterId());
         }
         if (request.getPreviousAverage() != null) retakeExam.setPreviousAverage(request.getPreviousAverage());
@@ -123,7 +125,7 @@ public class RetakeExamService {
     @Transactional
     public void deleteRetakeExam(String id) {
         RetakeExam retakeExam = retakeExamRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new IllegalArgumentException("Registro de retake no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registro de retake no encontrado", "RetakeExam", "id"));
         retakeExam.setIsDeleted(true);
         retakeExamRepository.save(retakeExam);
         log.info("Deleted retake exam: {}", id);
